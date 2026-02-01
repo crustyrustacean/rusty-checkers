@@ -4,4 +4,5 @@
 .env
 
 # Build Artifacts
+frontend/dist
 /target
