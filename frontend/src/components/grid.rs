@@ -1,6 +1,7 @@
 // src/components/grid.rs
 
 // dependencies
+use crate::domain::{Game, Player};
 use wasm_bindgen::JsCast;
 use web_sys::{HtmlCanvasElement, CanvasRenderingContext2d};
 use yew::prelude::*;
@@ -38,17 +39,25 @@ pub fn Grid() -> Html {
                     }
                 }
 
-                ctx.set_fill_style_str("red");
-                let row = 0;
-                let col = 1;
+                let game = Game::new();
+                for piece in &game.pieces {
+                    log::info!("Piece at row {}, col {}", piece.row, piece.col);
+                    if piece.owner == Player::Dark {
+                        ctx.set_fill_style_str("red");
+                    } else {
+                        ctx.set_fill_style_str("white");
+                    }
+                    let row = piece.row;
+                    let col = piece.col;
 
-                let center_x = (col * 100 + 50) as f64;
-                let center_y = (row * 100 + 50) as f64;
-                let radius = 40.0;
+                    let center_x = (col * 100 + 50) as f64;
+                    let center_y = (row * 100 + 50) as f64;
+                    let radius = 40.0;
 
-                ctx.begin_path();
-                ctx.arc(center_x, center_y, radius, 0.0, 2.0 * std::f64::consts::PI).unwrap();
-                ctx.fill();
+                    ctx.begin_path();
+                    ctx.arc(center_x, center_y, radius, 0.0, 2.0 * std::f64::consts::PI).unwrap();
+                    ctx.fill();
+                }
             }
         });
     }

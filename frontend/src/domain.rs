@@ -4,7 +4,7 @@
 
 #[derive(Debug)]
 pub struct Game {
-    pieces: Vec<GamePiece>,
+    pub pieces: Vec<GamePiece>,
 }
 
 impl Game {
@@ -23,24 +23,24 @@ impl Game {
                 GamePiece::new(Player::Dark, 2, 3),
                 GamePiece::new(Player::Dark, 2, 5),
                 GamePiece::new(Player::Dark, 2, 7),
-                GamePiece::new(Player::Light, 5, 1),
-                GamePiece::new(Player::Light, 5, 3),
-                GamePiece::new(Player::Light, 5, 5),
-                GamePiece::new(Player::Light, 5, 7),
-                GamePiece::new(Player::Light, 6, 0),
-                GamePiece::new(Player::Light, 6, 2),
-                GamePiece::new(Player::Light, 6, 4),
-                GamePiece::new(Player::Light, 6, 6),
-                GamePiece::new(Player::Light, 7, 1),
-                GamePiece::new(Player::Light, 7, 3),
-                GamePiece::new(Player::Light, 7, 5),
-                GamePiece::new(Player::Light, 7, 7),
+                GamePiece::new(Player::Light, 5, 0),
+                GamePiece::new(Player::Light, 5, 2),
+                GamePiece::new(Player::Light, 5, 4),
+                GamePiece::new(Player::Light, 5, 6),
+                GamePiece::new(Player::Light, 6, 1),
+                GamePiece::new(Player::Light, 6, 3),
+                GamePiece::new(Player::Light, 6, 5),
+                GamePiece::new(Player::Light, 6, 7),
+                GamePiece::new(Player::Light, 7, 0),
+                GamePiece::new(Player::Light, 7, 2),
+                GamePiece::new(Player::Light, 7, 4),
+                GamePiece::new(Player::Light, 7, 6),
             ],
         }
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Player {
     Dark,
     Light,
@@ -48,9 +48,9 @@ pub enum Player {
 
 #[derive(Debug)]
 pub struct GamePiece {
-    owner: Player,
-    row: usize,
-    col: usize,
+    pub owner: Player,
+    pub row: usize,
+    pub col: usize,
     is_kinged: bool,
 }
 
