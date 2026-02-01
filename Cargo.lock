@@ -4,7 +4,7 @@ version = 4
 
 [[package]]
 name = "backend"
-version = "0.2.0"
+version = "0.3.0"
 
 [[package]]
 name = "bincode"
@@ -66,13 +66,15 @@ dependencies = [
 
 [[package]]
 name = "frontend"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "console_error_panic_hook",
  "gloo-net 0.6.0",
  "log",
+ "wasm-bindgen",
  "wasm-bindgen-futures",
  "wasm-logger",
+ "web-sys",
  "yew",
 ]
 
