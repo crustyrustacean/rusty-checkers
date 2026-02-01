@@ -37,6 +37,18 @@ pub fn Grid() -> Html {
                         }
                     }
                 }
+
+                ctx.set_fill_style_str("red");
+                let row = 0;
+                let col = 1;
+
+                let center_x = (col * 100 + 50) as f64;
+                let center_y = (row * 100 + 50) as f64;
+                let radius = 40.0;
+
+                ctx.begin_path();
+                ctx.arc(center_x, center_y, radius, 0.0, 2.0 * std::f64::consts::PI).unwrap();
+                ctx.fill();
             }
         });
     }
