@@ -1,0 +1,7 @@
+# rusty-checkers .gitignore rules
+
+# Environment variables
+.env
+
+# Build Artifacts
+/target
