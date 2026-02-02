@@ -8,7 +8,7 @@ use yewdux::prelude::*;
 
 #[function_component]
 pub fn App() -> Html {
-    let (state, dispatch) = use_store::<State>();
+    let (_state, _dispatch) = use_store::<State>();
 
     html! {
         <Grid />

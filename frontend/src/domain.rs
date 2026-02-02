@@ -38,6 +38,64 @@ impl Game {
             ],
         }
     }
+
+    pub fn valid_moves(&self, piece: &GamePiece) -> Vec<(usize, usize)> {
+        let mut valid_moves: Vec<(usize, usize)> = Vec::new();
+
+        match piece.owner {
+            Player::Dark => {
+                if piece.col > 0 && piece.row < 7 {
+                    let destination = (piece.row + 1, piece.col - 1);
+                    let is_occupied = self
+                        .pieces
+                        .iter()
+                        .any(|p| p.row == destination.0 && p.col == destination.1);
+
+                    if !is_occupied {
+                        valid_moves.push(destination);
+                    }
+                }
+
+                if piece.col < 7 && piece.row < 7 {
+                    let destination = (piece.row + 1, piece.col + 1);
+                    let is_occupied = self
+                        .pieces
+                        .iter()
+                        .any(|p| p.row == destination.0 && p.col == destination.1);
+
+                    if !is_occupied {
+                        valid_moves.push(destination);
+                    }
+                }
+            }
+            Player::Light => {
+                if piece.col < 7 && piece.row > 0 {
+                    let destination = (piece.row - 1, piece.col + 1);
+                    let is_occupied = self
+                        .pieces
+                        .iter()
+                        .any(|p| p.row == destination.0 && p.col == destination.1);
+
+                    if !is_occupied {
+                        valid_moves.push(destination);
+                    }
+                }
+
+                if piece.col > 0 && piece.row > 0 {
+                    let destination = (piece.row - 1, piece.col - 1);
+                    let is_occupied = self
+                        .pieces
+                        .iter()
+                        .any(|p| p.row == destination.0 && p.col == destination.1);
+
+                    if !is_occupied {
+                        valid_moves.push(destination);
+                    }
+                }
+            }
+        }
+        valid_moves
+    }
 }
 
 impl Default for Game {

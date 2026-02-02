@@ -1,7 +1,7 @@
 // src/components/grid.rs
 
 // dependencies
-use crate::domain::{Game, Player};
+use crate::domain::Player;
 use crate::state::State;
 use wasm_bindgen::JsCast;
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
@@ -11,7 +11,7 @@ use yewdux::prelude::*;
 // grid component
 #[function_component]
 pub fn Grid() -> Html {
-    let (state, _) = use_store::<State>();
+    let (state, dispatch) = use_store::<State>();
     let canvas_ref = use_node_ref();
 
     let on_click = {
@@ -32,11 +32,17 @@ pub fn Grid() -> Html {
             for piece in &state.current_game.pieces {
                 if piece.row == row && piece.col == col {
                     log::info!("Found piece at row {}, col {}", row, col);
+                    dispatch.reduce_mut(|state| state.selected_piece = Some((row, col)));
+                    let moves = &state.current_game.valid_moves(piece);
+                    for (dest_row,dest_col) in moves.iter() {
+                        log::info!("Valid move to: row {}, col {}", dest_row, dest_col);
+                    }
+                    dispatch.reduce_mut(|state| state.valid_moves = moves.to_vec());
                     return;
                 }
             }
             log::info!("Empty square at row {}, col {}", row, col);
-            })
+        })
     };
 
     {
@@ -76,7 +82,6 @@ pub fn Grid() -> Html {
 
                 let game = &state.current_game;
                 for piece in &game.pieces {
-                    log::info!("Piece at row {}, col {}", piece.row, piece.col);
                     if piece.owner == Player::Dark {
                         ctx.set_fill_style_str("red");
                     } else {
