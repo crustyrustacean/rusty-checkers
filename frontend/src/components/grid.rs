@@ -34,7 +34,7 @@ pub fn Grid() -> Html {
                     log::info!("Found piece at row {}, col {}", row, col);
                     dispatch.reduce_mut(|state| state.selected_piece = Some((row, col)));
                     let moves = &state.current_game.valid_moves(piece);
-                    for (dest_row,dest_col) in moves.iter() {
+                    for (dest_row, dest_col) in moves.iter() {
                         log::info!("Valid move to: row {}, col {}", dest_row, dest_col);
                     }
                     dispatch.reduce_mut(|state| state.valid_moves = moves.to_vec());
@@ -42,12 +42,17 @@ pub fn Grid() -> Html {
                 }
             }
             log::info!("Empty square at row {}, col {}", row, col);
+            dispatch.reduce_mut(|s| {
+                s.selected_piece = None;
+                s.valid_moves = vec![];
+            });
         })
     };
 
     {
         let canvas_ref = canvas_ref.clone();
-        use_effect(move || {
+        use_effect_with(state.clone(), move |state| {
+            log::info!("Effect running");
             let Some(canvas) = canvas_ref.cast::<HtmlCanvasElement>() else {
                 log::error!("Failed to get a canvas element to draw the game board on.");
                 return;
@@ -68,15 +73,17 @@ pub fn Grid() -> Html {
                     for j in 0..8 {
                         let x = (i * 100) as f64;
                         let y = (j * 100) as f64;
-                        if (i + j) % 2 == 0 {
-                            let colour = "grey";
-                            ctx.set_fill_style_str(colour);
-                            ctx.fill_rect(x, y, 100.0, 100.0);
+
+                        let colour = if state.selected_piece == Some((j, i)) {
+                            "yellow"
+                        } else if (i + j) % 2 == 0 {
+                            "grey"
                         } else {
-                            let colour = "black";
-                            ctx.set_fill_style_str(colour);
-                            ctx.fill_rect(x, y, 100.0, 100.0);
-                        }
+                            "black"
+                        };
+
+                        ctx.set_fill_style_str(colour);
+                        ctx.fill_rect(x, y, 100.0, 100.0);
                     }
                 }
 
