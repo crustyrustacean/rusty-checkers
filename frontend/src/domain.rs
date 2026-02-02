@@ -2,7 +2,7 @@
 
 // dependencies
 
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Game {
     pub pieces: Vec<GamePiece>,
 }
@@ -40,13 +40,19 @@ impl Game {
     }
 }
 
-#[derive(Debug, PartialEq)]
+impl Default for Game {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub enum Player {
     Dark,
     Light,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct GamePiece {
     pub owner: Player,
     pub row: usize,

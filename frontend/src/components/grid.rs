@@ -2,14 +2,42 @@
 
 // dependencies
 use crate::domain::{Game, Player};
+use crate::state::State;
 use wasm_bindgen::JsCast;
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
 use yew::prelude::*;
+use yewdux::prelude::*;
 
 // grid component
-#[component]
+#[function_component]
 pub fn Grid() -> Html {
+    let (state, _) = use_store::<State>();
     let canvas_ref = use_node_ref();
+
+    let on_click = {
+        let canvas_ref = canvas_ref.clone();
+        let state = state.clone();
+        Callback::from(move |event: MouseEvent| {
+            let Some(canvas) = canvas_ref.cast::<HtmlCanvasElement>() else {
+                return;
+            };
+
+            let rect = canvas.get_bounding_client_rect();
+            let x = event.client_x() as f64 - rect.left();
+            let y = event.client_y() as f64 - rect.top();
+
+            let col = (x / 100.0) as usize;
+            let row = (y / 100.0) as usize;
+
+            for piece in &state.current_game.pieces {
+                if piece.row == row && piece.col == col {
+                    log::info!("Found piece at row {}, col {}", row, col);
+                    return;
+                }
+            }
+            log::info!("Empty square at row {}, col {}", row, col);
+            })
+    };
 
     {
         let canvas_ref = canvas_ref.clone();
@@ -46,7 +74,7 @@ pub fn Grid() -> Html {
                     }
                 }
 
-                let game = Game::new();
+                let game = &state.current_game;
                 for piece in &game.pieces {
                     log::info!("Piece at row {}, col {}", piece.row, piece.col);
                     if piece.owner == Player::Dark {
@@ -70,7 +98,7 @@ pub fn Grid() -> Html {
     }
 
     html! {
-        <canvas ref={canvas_ref} id="board" height=800 width=800 style="border: 1px solid black">
+        <canvas ref={canvas_ref} onclick={on_click} id="board" height=800 width=800 style="border: 1px solid black">
         </canvas>
     }
 }

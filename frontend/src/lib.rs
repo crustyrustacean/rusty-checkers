@@ -4,7 +4,9 @@
 pub mod app;
 pub mod components;
 pub mod domain;
+pub mod state;
 
 // re-exports
 pub use app::*;
 pub use domain::*;
+pub use state::*;

@@ -18,5 +18,6 @@ log = "0.4.29"
 wasm-bindgen = "0.2.108"
 wasm-bindgen-futures = "0.4.58"
 wasm-logger = "0.2.0"
-web-sys = { version = "0.3", features = ["Window", "Document", "HtmlCanvasElement", "CanvasRenderingContext2d"] }
-yew = { version = "0.22.0", features = ["csr"] }
+web-sys = { version = "0.3", features = ["Window", "Document", "Element", "DomRect", "HtmlCanvasElement", "CanvasRenderingContext2d", "MouseEvent"] }
+yew = { version = "0.21.0", features = ["csr"] }
+yewdux = "0.11.0"
