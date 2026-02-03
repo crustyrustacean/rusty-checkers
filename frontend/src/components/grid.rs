@@ -76,6 +76,12 @@ pub fn Grid() -> Html {
 
                         let colour = if state.selected_piece == Some((j, i)) {
                             "yellow"
+                        } else if state
+                            .valid_moves
+                            .iter()
+                            .any(|(row, col)| *row == j && *col == i)
+                        {
+                            "green"
                         } else if (i + j) % 2 == 0 {
                             "grey"
                         } else {
