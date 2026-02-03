@@ -96,6 +96,13 @@ impl Game {
         }
         valid_moves
     }
+
+    pub fn advance(&mut self, piece: &GamePiece, dest_row: usize, dest_col: usize) {
+        if let Some(p) = self.pieces.iter_mut().find(|p| p.row == piece.row && p.col == piece.col) {
+            p.row = dest_row;
+            p.col = dest_col;
+        }
+    }
 }
 
 impl Default for Game {

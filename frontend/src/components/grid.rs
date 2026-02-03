@@ -29,6 +29,17 @@ pub fn Grid() -> Html {
             let col = (x / 100.0) as usize;
             let row = (y / 100.0) as usize;
 
+            if let Some((sel_row, sel_col)) = state.selected_piece {
+                if state.valid_moves.contains(&(row, col)) {
+                    let piece = state.current_game.pieces.iter().find(|p| p.row == sel_row && p.col == sel_col).unwrap();
+                    dispatch.reduce_mut(|state| {
+                        state.current_game.advance(piece, row, col);
+                        state.selected_piece = None;
+                        state.valid_moves = vec![];
+                    })
+                }
+            }
+
             for piece in &state.current_game.pieces {
                 if piece.row == row && piece.col == col {
                     log::info!("Found piece at row {}, col {}", row, col);
@@ -42,9 +53,9 @@ pub fn Grid() -> Html {
                 }
             }
             log::info!("Empty square at row {}, col {}", row, col);
-            dispatch.reduce_mut(|s| {
-                s.selected_piece = None;
-                s.valid_moves = vec![];
+            dispatch.reduce_mut(|state| {
+                state.selected_piece = None;
+                state.valid_moves = vec![];
             });
         })
     };
