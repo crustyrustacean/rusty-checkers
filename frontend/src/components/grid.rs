@@ -34,6 +34,11 @@ pub fn Grid() -> Html {
                     let piece = state.current_game.pieces.iter().find(|p| p.row == sel_row && p.col == sel_col).unwrap();
                     dispatch.reduce_mut(|state| {
                         state.current_game.advance(piece, row, col);
+                        if (row as i32 - sel_row as i32).abs() == 2 {
+                            let captured_row = (sel_row + row) / 2;
+                            let captured_col = (sel_col + col) / 2;
+                            state.current_game.capture(captured_row, captured_col);
+                        }
                         state.selected_piece = None;
                         state.valid_moves = vec![];
                     })

@@ -5,6 +5,7 @@
 #[derive(Clone, Debug, PartialEq)]
 pub struct Game {
     pub pieces: Vec<GamePiece>,
+    pub captured_pieces: Vec<GamePiece>,
 }
 
 impl Game {
@@ -36,6 +37,7 @@ impl Game {
                 GamePiece::new(Player::Light, 7, 4),
                 GamePiece::new(Player::Light, 7, 6),
             ],
+            captured_pieces: vec![],
         }
     }
 
@@ -53,6 +55,23 @@ impl Game {
 
                     if !is_occupied {
                         valid_moves.push(destination);
+                    } else {
+                        let adjacent_piece = self.pieces.iter().find(|p| p.row == destination.0 && p.col == destination.1);
+                        if let Some(adj) = adjacent_piece {
+                            if adj.owner == Player::Light {
+                                if piece.col > 1 && piece.row < 6 {
+                                    let destination = (piece.row + 2, piece.col - 2);
+                                    let is_occupied = self
+                                        .pieces
+                                        .iter()
+                                        .any(|p| p.row == destination.0 && p.col == destination.1);
+
+                                    if !is_occupied {
+                                        valid_moves.push(destination);
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -65,6 +84,23 @@ impl Game {
 
                     if !is_occupied {
                         valid_moves.push(destination);
+                    } else {
+                        let adjacent_piece = self.pieces.iter().find(|p| p.row == destination.0 && p.col == destination.1);
+                        if let Some(adj) = adjacent_piece {
+                            if adj.owner == Player::Light {
+                                if piece.col < 6 && piece.row < 6 {
+                                    let destination = (piece.row + 2, piece.col + 2);
+                                    let is_occupied = self
+                                        .pieces
+                                        .iter()
+                                        .any(|p| p.row == destination.0 && p.col == destination.1);
+
+                                    if !is_occupied {
+                                        valid_moves.push(destination);
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -78,6 +114,23 @@ impl Game {
 
                     if !is_occupied {
                         valid_moves.push(destination);
+                    } else {
+                        let adjacent_piece = self.pieces.iter().find(|p| p.row == destination.0 && p.col == destination.1);
+                        if let Some(adj) = adjacent_piece {
+                            if adj.owner == Player::Dark {
+                                if piece.col > 1 && piece.row < 6 {
+                                    let destination = (piece.row - 2, piece.col + 2);
+                                    let is_occupied = self
+                                        .pieces
+                                        .iter()
+                                        .any(|p| p.row == destination.0 && p.col == destination.1);
+
+                                    if !is_occupied {
+                                        valid_moves.push(destination);
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -90,6 +143,23 @@ impl Game {
 
                     if !is_occupied {
                         valid_moves.push(destination);
+                    } else {
+                        let adjacent_piece = self.pieces.iter().find(|p| p.row == destination.0 && p.col == destination.1);
+                        if let Some(adj) = adjacent_piece {
+                            if adj.owner == Player::Dark{
+                                if piece.col > 1 && piece.row > 1 {
+                                    let destination = (piece.row - 2, piece.col - 2);
+                                    let is_occupied = self
+                                        .pieces
+                                        .iter()
+                                        .any(|p| p.row == destination.0 && p.col == destination.1);
+
+                                    if !is_occupied {
+                                        valid_moves.push(destination);
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -102,6 +172,12 @@ impl Game {
             p.row = dest_row;
             p.col = dest_col;
         }
+    }
+
+    pub fn capture(&mut self, row: usize, col: usize) {
+        let index = self.pieces.iter().position(|p| p.row == row && p.col == col).unwrap();
+        let piece = self.pieces.remove(index);
+        self.captured_pieces.push(piece);
     }
 }
 
