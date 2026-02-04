@@ -6,6 +6,7 @@
 pub struct Game {
     pub pieces: Vec<GamePiece>,
     pub captured_pieces: Vec<GamePiece>,
+    pub current_player: Player,
 }
 
 impl Game {
@@ -38,6 +39,7 @@ impl Game {
                 GamePiece::new(Player::Light, 7, 6),
             ],
             captured_pieces: vec![],
+            current_player: Player::Dark,
         }
     }
 
@@ -178,6 +180,13 @@ impl Game {
         let index = self.pieces.iter().position(|p| p.row == row && p.col == col).unwrap();
         let piece = self.pieces.remove(index);
         self.captured_pieces.push(piece);
+    }
+
+    pub fn switch_turn(&mut self) {
+        self.current_player = match self.current_player {
+            Player::Dark => Player::Light,
+            Player::Light => Player::Dark,
+        }
     }
 }
 

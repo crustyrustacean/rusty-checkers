@@ -39,6 +39,7 @@ pub fn Grid() -> Html {
                             let captured_col = (sel_col + col) / 2;
                             state.current_game.capture(captured_row, captured_col);
                         }
+                        state.current_game.switch_turn();
                         state.selected_piece = None;
                         state.valid_moves = vec![];
                     })
@@ -46,7 +47,7 @@ pub fn Grid() -> Html {
             }
 
             for piece in &state.current_game.pieces {
-                if piece.row == row && piece.col == col {
+                if piece.row == row && piece.col == col && state.current_game.current_player == piece.owner {
                     log::info!("Found piece at row {}, col {}", row, col);
                     dispatch.reduce_mut(|state| state.selected_piece = Some((row, col)));
                     let moves = &state.current_game.valid_moves(piece);
