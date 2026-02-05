@@ -1,8 +1,9 @@
 // frontend/src/app.rs
 
 // dependencies
-use crate::components::Grid;
+use crate::components::{Grid, TurnIndicator};
 use crate::state::State;
+use crate::views::GameView;
 use yew::prelude::*;
 use yewdux::prelude::*;
 
@@ -11,6 +12,9 @@ pub fn App() -> Html {
     let (_state, _dispatch) = use_store::<State>();
 
     html! {
-        <Grid />
+        <GameView>
+            <Grid />
+            <TurnIndicator />
+        </GameView>
     }
 }

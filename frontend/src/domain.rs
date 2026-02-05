@@ -120,7 +120,7 @@ impl Game {
                         let adjacent_piece = self.pieces.iter().find(|p| p.row == destination.0 && p.col == destination.1);
                         if let Some(adj) = adjacent_piece {
                             if adj.owner == Player::Dark {
-                                if piece.col > 1 && piece.row < 6 {
+                                if piece.col < 6 && piece.row > 1 {
                                     let destination = (piece.row - 2, piece.col + 2);
                                     let is_occupied = self
                                         .pieces
