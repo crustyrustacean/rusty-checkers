@@ -58,7 +58,10 @@ impl Game {
                     if !is_occupied {
                         valid_moves.push(destination);
                     } else {
-                        let adjacent_piece = self.pieces.iter().find(|p| p.row == destination.0 && p.col == destination.1);
+                        let adjacent_piece = self
+                            .pieces
+                            .iter()
+                            .find(|p| p.row == destination.0 && p.col == destination.1);
                         if let Some(adj) = adjacent_piece {
                             if adj.owner == Player::Light {
                                 if piece.col > 1 && piece.row < 6 {
@@ -87,7 +90,10 @@ impl Game {
                     if !is_occupied {
                         valid_moves.push(destination);
                     } else {
-                        let adjacent_piece = self.pieces.iter().find(|p| p.row == destination.0 && p.col == destination.1);
+                        let adjacent_piece = self
+                            .pieces
+                            .iter()
+                            .find(|p| p.row == destination.0 && p.col == destination.1);
                         if let Some(adj) = adjacent_piece {
                             if adj.owner == Player::Light {
                                 if piece.col < 6 && piece.row < 6 {
@@ -117,7 +123,10 @@ impl Game {
                     if !is_occupied {
                         valid_moves.push(destination);
                     } else {
-                        let adjacent_piece = self.pieces.iter().find(|p| p.row == destination.0 && p.col == destination.1);
+                        let adjacent_piece = self
+                            .pieces
+                            .iter()
+                            .find(|p| p.row == destination.0 && p.col == destination.1);
                         if let Some(adj) = adjacent_piece {
                             if adj.owner == Player::Dark {
                                 if piece.col < 6 && piece.row > 1 {
@@ -146,9 +155,12 @@ impl Game {
                     if !is_occupied {
                         valid_moves.push(destination);
                     } else {
-                        let adjacent_piece = self.pieces.iter().find(|p| p.row == destination.0 && p.col == destination.1);
+                        let adjacent_piece = self
+                            .pieces
+                            .iter()
+                            .find(|p| p.row == destination.0 && p.col == destination.1);
                         if let Some(adj) = adjacent_piece {
-                            if adj.owner == Player::Dark{
+                            if adj.owner == Player::Dark {
                                 if piece.col > 1 && piece.row > 1 {
                                     let destination = (piece.row - 2, piece.col - 2);
                                     let is_occupied = self
@@ -170,14 +182,22 @@ impl Game {
     }
 
     pub fn advance(&mut self, piece: &GamePiece, dest_row: usize, dest_col: usize) {
-        if let Some(p) = self.pieces.iter_mut().find(|p| p.row == piece.row && p.col == piece.col) {
+        if let Some(p) = self
+            .pieces
+            .iter_mut()
+            .find(|p| p.row == piece.row && p.col == piece.col)
+        {
             p.row = dest_row;
             p.col = dest_col;
         }
     }
 
     pub fn capture(&mut self, row: usize, col: usize) {
-        let index = self.pieces.iter().position(|p| p.row == row && p.col == col).unwrap();
+        let index = self
+            .pieces
+            .iter()
+            .position(|p| p.row == row && p.col == col)
+            .unwrap();
         let piece = self.pieces.remove(index);
         self.captured_pieces.push(piece);
     }

@@ -31,7 +31,12 @@ pub fn Grid() -> Html {
 
             if let Some((sel_row, sel_col)) = state.selected_piece {
                 if state.valid_moves.contains(&(row, col)) {
-                    let piece = state.current_game.pieces.iter().find(|p| p.row == sel_row && p.col == sel_col).unwrap();
+                    let piece = state
+                        .current_game
+                        .pieces
+                        .iter()
+                        .find(|p| p.row == sel_row && p.col == sel_col)
+                        .unwrap();
                     dispatch.reduce_mut(|state| {
                         state.current_game.advance(piece, row, col);
                         if (row as i32 - sel_row as i32).abs() == 2 {
@@ -39,10 +44,16 @@ pub fn Grid() -> Html {
                             let captured_col = (sel_col + col) / 2;
                             state.current_game.capture(captured_row, captured_col);
                         }
-                        let piece = state.current_game.pieces.iter_mut().find(|p| p.row == row && p.col == col).unwrap();
-                        if (piece.row == 0 && piece.owner == Player::Light) || (piece.row == 7 && piece.owner == Player::Dark) {
+                        let piece = state
+                            .current_game
+                            .pieces
+                            .iter_mut()
+                            .find(|p| p.row == row && p.col == col)
+                            .unwrap();
+                        if (piece.row == 0 && piece.owner == Player::Light)
+                            || (piece.row == 7 && piece.owner == Player::Dark)
+                        {
                             piece.is_kinged = true;
-                            
                         }
                         state.current_game.switch_turn();
                         state.selected_piece = None;
@@ -52,7 +63,10 @@ pub fn Grid() -> Html {
             }
 
             for piece in &state.current_game.pieces {
-                if piece.row == row && piece.col == col && state.current_game.current_player == piece.owner {
+                if piece.row == row
+                    && piece.col == col
+                    && state.current_game.current_player == piece.owner
+                {
                     log::info!("Found piece at row {}, col {}", row, col);
                     dispatch.reduce_mut(|state| state.selected_piece = Some((row, col)));
                     let moves = &state.current_game.valid_moves(piece);
@@ -122,6 +136,7 @@ pub fn Grid() -> Html {
                     } else {
                         ctx.set_fill_style_str("white");
                     }
+
                     let row = piece.row;
                     let col = piece.col;
 
@@ -132,6 +147,12 @@ pub fn Grid() -> Html {
                     ctx.begin_path();
                     let _ = ctx.arc(center_x, center_y, radius, 0.0, 2.0 * std::f64::consts::PI);
                     ctx.fill();
+
+                    if piece.is_kinged == true {
+                        ctx.set_font("30px Arial");
+                        ctx.set_fill_style_str("gold");
+                        let _ = ctx.fill_text("K", center_x - 10.0, center_y + 10.0);
+                    }
                 }
             }
         });

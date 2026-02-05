@@ -14,5 +14,5 @@ pub fn GameView(props: &GameViewProps) -> Html {
         <div style="display: flex; flex-direction: row,">
             { props.children.clone() }
         </div>
-    }   
+    }
 }

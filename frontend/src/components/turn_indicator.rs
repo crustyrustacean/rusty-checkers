@@ -10,7 +10,7 @@ use yewdux::prelude::*;
 #[function_component]
 pub fn TurnIndicator() -> Html {
     let (state, _) = use_store::<State>();
-    
+
     html! {
         <section>
             <div style={if state.current_game.current_player == Player::Dark {"background: yellow"} else { "" }}>
