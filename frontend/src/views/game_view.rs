@@ -11,7 +11,7 @@ pub struct GameViewProps {
 #[function_component]
 pub fn GameView(props: &GameViewProps) -> Html {
     html! {
-        <div>
+        <div style="display: flex; flex-direction: row,">
             { props.children.clone() }
         </div>
     }   

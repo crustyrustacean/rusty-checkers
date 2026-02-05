@@ -39,6 +39,11 @@ pub fn Grid() -> Html {
                             let captured_col = (sel_col + col) / 2;
                             state.current_game.capture(captured_row, captured_col);
                         }
+                        let piece = state.current_game.pieces.iter_mut().find(|p| p.row == row && p.col == col).unwrap();
+                        if (piece.row == 0 && piece.owner == Player::Light) || (piece.row == 7 && piece.owner == Player::Dark) {
+                            piece.is_kinged = true;
+                            
+                        }
                         state.current_game.switch_turn();
                         state.selected_piece = None;
                         state.valid_moves = vec![];

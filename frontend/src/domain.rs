@@ -207,7 +207,7 @@ pub struct GamePiece {
     pub owner: Player,
     pub row: usize,
     pub col: usize,
-    is_kinged: bool,
+    pub is_kinged: bool,
 }
 
 impl GamePiece {
