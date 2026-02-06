@@ -65,6 +65,7 @@ pub fn Grid() -> Html {
                         .any(|p| !state.current_game.valid_moves(p).is_empty());
 
                     if !has_moves {
+                        log::info!("Setting winner!");
                         state.current_game.winner = Some(match state.current_game.current_player {
                             Player::Dark => Player::Light,
                             Player::Light => Player::Dark,

@@ -154,3 +154,47 @@ impl GamePiece {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_no_valid_moves_when_blocked() {
+        // Dark piece blocked by own pieces (can't jump your own)
+        let game = Game {
+            pieces: vec![
+                GamePiece::new(Player::Dark, 0, 1), // Dark piece in top row
+                GamePiece::new(Player::Dark, 1, 0), // Dark blocking down-left
+                GamePiece::new(Player::Dark, 1, 2), // Dark blocking down-right
+            ],
+            captured_pieces: vec![],
+            current_player: Player::Dark,
+            winner: None,
+        };
+
+        let dark_piece = &game.pieces[0];
+        let moves = game.valid_moves(dark_piece);
+
+        assert!(moves.is_empty(), "Dark piece should have no valid moves");
+    }
+
+    #[test]
+    fn test_has_valid_moves_when_not_blocked() {
+        let game = Game {
+            pieces: vec![
+                GamePiece::new(Player::Dark, 2, 3), // Dark piece in middle of board
+            ],
+            captured_pieces: vec![],
+            current_player: Player::Dark,
+            winner: None,
+        };
+
+        let dark_piece = &game.pieces[0];
+        let moves = game.valid_moves(dark_piece);
+        println!("Moves found: {:?}", moves);
+        assert_eq!(moves.len(), 2, "Dark piece should have 2 valid moves");
+        assert!(moves.contains(&(3, 2)), "Should be able to move down-left");
+        assert!(moves.contains(&(3, 4)), "Should be able to move down-right");
+    }
+}
