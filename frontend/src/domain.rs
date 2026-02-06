@@ -7,177 +7,91 @@ pub struct Game {
     pub pieces: Vec<GamePiece>,
     pub captured_pieces: Vec<GamePiece>,
     pub current_player: Player,
+    pub winner: Option<Player>,
 }
 
 impl Game {
     pub fn new() -> Self {
+        let pieces: Vec<GamePiece> = (0..8)
+            .flat_map(|r| (0..8).map(move |c| (r, c)))
+            .filter(|(r, c)| (r + c) % 2 != 0)
+            .filter_map(|(r, c)| {
+                if r < 3 {
+                    Some(GamePiece::new(Player::Dark, r, c))
+                } else if r > 4 {
+                    Some(GamePiece::new(Player::Light, r, c))
+                } else {
+                    None
+                }
+            })
+            .collect();
+
         Self {
-            pieces: vec![
-                GamePiece::new(Player::Dark, 0, 1),
-                GamePiece::new(Player::Dark, 0, 3),
-                GamePiece::new(Player::Dark, 0, 5),
-                GamePiece::new(Player::Dark, 0, 7),
-                GamePiece::new(Player::Dark, 1, 0),
-                GamePiece::new(Player::Dark, 1, 2),
-                GamePiece::new(Player::Dark, 1, 4),
-                GamePiece::new(Player::Dark, 1, 6),
-                GamePiece::new(Player::Dark, 2, 1),
-                GamePiece::new(Player::Dark, 2, 3),
-                GamePiece::new(Player::Dark, 2, 5),
-                GamePiece::new(Player::Dark, 2, 7),
-                GamePiece::new(Player::Light, 5, 0),
-                GamePiece::new(Player::Light, 5, 2),
-                GamePiece::new(Player::Light, 5, 4),
-                GamePiece::new(Player::Light, 5, 6),
-                GamePiece::new(Player::Light, 6, 1),
-                GamePiece::new(Player::Light, 6, 3),
-                GamePiece::new(Player::Light, 6, 5),
-                GamePiece::new(Player::Light, 6, 7),
-                GamePiece::new(Player::Light, 7, 0),
-                GamePiece::new(Player::Light, 7, 2),
-                GamePiece::new(Player::Light, 7, 4),
-                GamePiece::new(Player::Light, 7, 6),
-            ],
+            pieces,
             captured_pieces: vec![],
             current_player: Player::Dark,
+            winner: None,
         }
     }
 
     pub fn valid_moves(&self, piece: &GamePiece) -> Vec<(usize, usize)> {
         let mut valid_moves: Vec<(usize, usize)> = Vec::new();
 
-        match piece.owner {
-            Player::Dark => {
-                if piece.col > 0 && piece.row < 7 {
-                    let destination = (piece.row + 1, piece.col - 1);
-                    let is_occupied = self
-                        .pieces
-                        .iter()
-                        .any(|p| p.row == destination.0 && p.col == destination.1);
-
-                    if !is_occupied {
-                        valid_moves.push(destination);
-                    } else {
-                        let adjacent_piece = self
-                            .pieces
-                            .iter()
-                            .find(|p| p.row == destination.0 && p.col == destination.1);
-                        if let Some(adj) = adjacent_piece {
-                            if adj.owner == Player::Light {
-                                if piece.col > 1 && piece.row < 6 {
-                                    let destination = (piece.row + 2, piece.col - 2);
-                                    let is_occupied = self
-                                        .pieces
-                                        .iter()
-                                        .any(|p| p.row == destination.0 && p.col == destination.1);
-
-                                    if !is_occupied {
-                                        valid_moves.push(destination);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                if piece.col < 7 && piece.row < 7 {
-                    let destination = (piece.row + 1, piece.col + 1);
-                    let is_occupied = self
-                        .pieces
-                        .iter()
-                        .any(|p| p.row == destination.0 && p.col == destination.1);
-
-                    if !is_occupied {
-                        valid_moves.push(destination);
-                    } else {
-                        let adjacent_piece = self
-                            .pieces
-                            .iter()
-                            .find(|p| p.row == destination.0 && p.col == destination.1);
-                        if let Some(adj) = adjacent_piece {
-                            if adj.owner == Player::Light {
-                                if piece.col < 6 && piece.row < 6 {
-                                    let destination = (piece.row + 2, piece.col + 2);
-                                    let is_occupied = self
-                                        .pieces
-                                        .iter()
-                                        .any(|p| p.row == destination.0 && p.col == destination.1);
-
-                                    if !is_occupied {
-                                        valid_moves.push(destination);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+        let directions = if piece.is_kinged {
+            vec![(-1, 1), (-1, -1), (1, 1), (1, -1)]
+        } else {
+            match piece.owner {
+                Player::Dark => vec![(1, 1), (1, -1)],
+                Player::Light => vec![(-1, 1), (-1, -1)],
             }
-            Player::Light => {
-                if piece.col < 7 && piece.row > 0 {
-                    let destination = (piece.row - 1, piece.col + 1);
-                    let is_occupied = self
-                        .pieces
-                        .iter()
-                        .any(|p| p.row == destination.0 && p.col == destination.1);
+        };
 
-                    if !is_occupied {
-                        valid_moves.push(destination);
-                    } else {
-                        let adjacent_piece = self
+        for (row_offset, col_offset) in &directions {
+            if (*row_offset == -1 && piece.row == 0) || (*row_offset == 1 && piece.row == 7) {
+                continue;
+            }
+            if (*col_offset == -1 && piece.col == 0) || (*col_offset == 1 && piece.col == 7) {
+                continue;
+            }
+
+            let dest_row = (piece.row as i32 + row_offset) as usize;
+            let dest_col = (piece.col as i32 + col_offset) as usize;
+
+            let is_occupied = self
+                .pieces
+                .iter()
+                .any(|p| p.row == dest_row && p.col == dest_col);
+
+            if !is_occupied {
+                valid_moves.push((dest_row, dest_col));
+            } else {
+                let adjacent_piece = self
+                    .pieces
+                    .iter()
+                    .find(|p| p.row == dest_row && p.col == dest_col);
+                if let Some(adj) = adjacent_piece
+                    && adj.owner != piece.owner
+                {
+                    let land_row_i32 = dest_row as i32 + row_offset;
+                    let land_col_i32 = dest_col as i32 + col_offset;
+
+                    if (0..=7).contains(&land_row_i32) && (0..=7).contains(&land_col_i32) {
+                        let land_row = land_row_i32 as usize;
+                        let land_col = land_col_i32 as usize;
+
+                        let is_occupied = self
                             .pieces
                             .iter()
-                            .find(|p| p.row == destination.0 && p.col == destination.1);
-                        if let Some(adj) = adjacent_piece {
-                            if adj.owner == Player::Dark {
-                                if piece.col < 6 && piece.row > 1 {
-                                    let destination = (piece.row - 2, piece.col + 2);
-                                    let is_occupied = self
-                                        .pieces
-                                        .iter()
-                                        .any(|p| p.row == destination.0 && p.col == destination.1);
+                            .any(|p| p.row == land_row && p.col == land_col);
 
-                                    if !is_occupied {
-                                        valid_moves.push(destination);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                if piece.col > 0 && piece.row > 0 {
-                    let destination = (piece.row - 1, piece.col - 1);
-                    let is_occupied = self
-                        .pieces
-                        .iter()
-                        .any(|p| p.row == destination.0 && p.col == destination.1);
-
-                    if !is_occupied {
-                        valid_moves.push(destination);
-                    } else {
-                        let adjacent_piece = self
-                            .pieces
-                            .iter()
-                            .find(|p| p.row == destination.0 && p.col == destination.1);
-                        if let Some(adj) = adjacent_piece {
-                            if adj.owner == Player::Dark {
-                                if piece.col > 1 && piece.row > 1 {
-                                    let destination = (piece.row - 2, piece.col - 2);
-                                    let is_occupied = self
-                                        .pieces
-                                        .iter()
-                                        .any(|p| p.row == destination.0 && p.col == destination.1);
-
-                                    if !is_occupied {
-                                        valid_moves.push(destination);
-                                    }
-                                }
-                            }
+                        if !is_occupied {
+                            valid_moves.push((land_row, land_col));
                         }
                     }
                 }
             }
         }
+
         valid_moves
     }
 
@@ -234,8 +148,8 @@ impl GamePiece {
     pub fn new(player: Player, row: usize, col: usize) -> Self {
         Self {
             owner: player,
-            row: row,
-            col: col,
+            row,
+            col,
             is_kinged: false,
         }
     }

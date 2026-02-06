@@ -10,7 +10,7 @@ checksum = "d301b3b94cb4b2f23d7917810addbbaff90738e0ca2be692bd027e70d7e0330c"
 
 [[package]]
 name = "backend"
-version = "0.15.0"
+version = "0.17.0"
 
 [[package]]
 name = "bincode"
@@ -113,7 +113,7 @@ dependencies = [
 
 [[package]]
 name = "frontend"
-version = "0.15.0"
+version = "0.17.0"
 dependencies = [
  "console_error_panic_hook",
  "gloo-net 0.6.0",

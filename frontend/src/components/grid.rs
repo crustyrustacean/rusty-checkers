@@ -29,37 +29,50 @@ pub fn Grid() -> Html {
             let col = (x / 100.0) as usize;
             let row = (y / 100.0) as usize;
 
-            if let Some((sel_row, sel_col)) = state.selected_piece {
-                if state.valid_moves.contains(&(row, col)) {
+            if let Some((sel_row, sel_col)) = state.selected_piece
+                && state.valid_moves.contains(&(row, col))
+            {
+                let piece = state
+                    .current_game
+                    .pieces
+                    .iter()
+                    .find(|p| p.row == sel_row && p.col == sel_col)
+                    .unwrap();
+                dispatch.reduce_mut(|state| {
+                    state.current_game.advance(piece, row, col);
+                    if (row as i32 - sel_row as i32).abs() == 2 {
+                        let captured_row = (sel_row + row) / 2;
+                        let captured_col = (sel_col + col) / 2;
+                        state.current_game.capture(captured_row, captured_col);
+                    }
                     let piece = state
                         .current_game
                         .pieces
-                        .iter()
-                        .find(|p| p.row == sel_row && p.col == sel_col)
+                        .iter_mut()
+                        .find(|p| p.row == row && p.col == col)
                         .unwrap();
-                    dispatch.reduce_mut(|state| {
-                        state.current_game.advance(piece, row, col);
-                        if (row as i32 - sel_row as i32).abs() == 2 {
-                            let captured_row = (sel_row + row) / 2;
-                            let captured_col = (sel_col + col) / 2;
-                            state.current_game.capture(captured_row, captured_col);
-                        }
-                        let piece = state
-                            .current_game
-                            .pieces
-                            .iter_mut()
-                            .find(|p| p.row == row && p.col == col)
-                            .unwrap();
-                        if (piece.row == 0 && piece.owner == Player::Light)
-                            || (piece.row == 7 && piece.owner == Player::Dark)
-                        {
-                            piece.is_kinged = true;
-                        }
-                        state.current_game.switch_turn();
-                        state.selected_piece = None;
-                        state.valid_moves = vec![];
-                    })
-                }
+                    if (piece.row == 0 && piece.owner == Player::Light)
+                        || (piece.row == 7 && piece.owner == Player::Dark)
+                    {
+                        piece.is_kinged = true;
+                    }
+                    state.current_game.switch_turn();
+                    let has_moves = state
+                        .current_game
+                        .pieces
+                        .iter()
+                        .filter(|p| p.owner == state.current_game.current_player)
+                        .any(|p| !state.current_game.valid_moves(p).is_empty());
+
+                    if !has_moves {
+                        state.current_game.winner = Some(match state.current_game.current_player {
+                            Player::Dark => Player::Light,
+                            Player::Light => Player::Dark,
+                        });
+                    }
+                    state.selected_piece = None;
+                    state.valid_moves = vec![];
+                })
             }
 
             for piece in &state.current_game.pieces {
@@ -148,7 +161,7 @@ pub fn Grid() -> Html {
                     let _ = ctx.arc(center_x, center_y, radius, 0.0, 2.0 * std::f64::consts::PI);
                     ctx.fill();
 
-                    if piece.is_kinged == true {
+                    if piece.is_kinged {
                         ctx.set_font("30px Arial");
                         ctx.set_fill_style_str("gold");
                         let _ = ctx.fill_text("K", center_x - 10.0, center_y + 10.0);
