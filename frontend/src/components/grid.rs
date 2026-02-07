@@ -39,67 +39,119 @@ pub fn Grid() -> Html {
                     .find(|p| p.row == sel_row && p.col == sel_col)
                     .unwrap();
                 dispatch.reduce_mut(|state| {
+                    let was_jump = (row as i32 - sel_row as i32).abs() == 2;
+
                     state.current_game.advance(piece, row, col);
-                    if (row as i32 - sel_row as i32).abs() == 2 {
+
+                    if was_jump {
                         let captured_row = (sel_row + row) / 2;
                         let captured_col = (sel_col + col) / 2;
                         state.current_game.capture(captured_row, captured_col);
                     }
-                    let piece = state
+
+                    let mut just_kinged = false;
+                    if let Some(p) = state
                         .current_game
                         .pieces
                         .iter_mut()
                         .find(|p| p.row == row && p.col == col)
-                        .unwrap();
-                    if (piece.row == 0 && piece.owner == Player::Light)
-                        || (piece.row == 7 && piece.owner == Player::Dark)
                     {
-                        piece.is_kinged = true;
+                        if (p.row == 0 && p.owner == Player::Light)
+                            || (p.row == 7 && p.owner == Player::Dark)
+                        {
+                            if !p.is_kinged {
+                                p.is_kinged = true;
+                                just_kinged = true;
+                            }
+                        }
                     }
-                    state.current_game.switch_turn();
-                    let has_moves = state
-                        .current_game
-                        .pieces
-                        .iter()
-                        .filter(|p| p.owner == state.current_game.current_player)
-                        .any(|p| !state.current_game.valid_moves(p).is_empty());
+                    
+                    let can_jump_again = if was_jump && !just_kinged {
+                        state
+                            .current_game
+                            .pieces
+                            .iter()
+                            .find(|p| p.row == row && p.col == col)
+                            .map(|p| state.current_game.has_available_jumps(p))
+                            .unwrap_or(false)
+                    } else {
+                        false
+                    };
 
-                    if !has_moves {
-                        log::info!("Setting winner!");
-                        state.current_game.winner = Some(match state.current_game.current_player {
-                            Player::Dark => Player::Light,
-                            Player::Light => Player::Dark,
-                        });
+                    if can_jump_again {
+                        // Multi-jump: Keep the piece selected and filter moves to only jumps
+                        state.selected_piece = Some((row, col));
+
+                        // We find the piece one last time to get its valid moves
+                        if let Some(p) = state
+                            .current_game
+                            .pieces
+                            .iter()
+                            .find(|p| p.row == row && p.col == col)
+                        {
+                            state.valid_moves = state
+                                .current_game
+                                .valid_moves(p)
+                                .into_iter()
+                                .filter(|(r, _)| (*r as i32 - row as i32).abs() == 2)
+                                .collect();
+                        }
+                    } else {
+                        // End of turn logic
+                        state.current_game.switch_turn();
+
+                        let current_player = state.current_game.current_player.clone();
+                        let next_player_has_moves = state
+                            .current_game
+                            .pieces
+                            .iter()
+                            .filter(|p| p.owner == current_player)
+                            .any(|p| !state.current_game.valid_moves(p).is_empty());
+
+                        if !next_player_has_moves {
+                            state.current_game.winner = Some(match current_player {
+                                Player::Dark => Player::Light,
+                                Player::Light => Player::Dark,
+                            });
+                        }
+                        state.selected_piece = None;
+                        state.valid_moves = vec![];
                     }
-                    state.selected_piece = None;
-                    state.valid_moves = vec![];
-                })
+                });
             }
 
-            for piece in &state.current_game.pieces {
-                if piece.row == row
-                    && piece.col == col
-                    && state.current_game.current_player == piece.owner
-                {
-                    log::info!("Found piece at row {}, col {}", row, col);
-                    dispatch.reduce_mut(|state| state.selected_piece = Some((row, col)));
-                    let moves = &state.current_game.valid_moves(piece);
-                    let captures_exist = state.current_game.check_captures_moves(&state.current_game.current_player);
-                    let filtered_moves = if captures_exist {
-                        moves.iter()
-                            .filter(|(dest_row, _dest_col)| (*dest_row as i32 - row as i32).abs() == 2)
-                            .cloned()
-                            .collect()
-                    } else {
-                        moves.to_vec()
-                    };
-                    for (dest_row, dest_col) in moves.iter() {
-                        log::info!("Valid move to: row {}, col {}", dest_row, dest_col);
+            if state.selected_piece.is_none() {
+                for piece in &state.current_game.pieces {
+                    if piece.row == row
+                        && piece.col == col
+                        && state.current_game.current_player == piece.owner
+                    {
+                        log::info!("Found piece at row {}, col {}", row, col);
+                        dispatch.reduce_mut(|state| state.selected_piece = Some((row, col)));
+                        let moves = &state.current_game.valid_moves(piece);
+                        let captures_exist = state
+                            .current_game
+                            .check_captures_moves(&state.current_game.current_player);
+                        let filtered_moves = if captures_exist {
+                            moves
+                                .iter()
+                                .filter(|(dest_row, _dest_col)| {
+                                    (*dest_row as i32 - row as i32).abs() == 2
+                                })
+                                .cloned()
+                                .collect()
+                        } else {
+                            moves.to_vec()
+                        };
+                        for (dest_row, dest_col) in moves.iter() {
+                            log::info!("Valid move to: row {}, col {}", dest_row, dest_col);
+                        }
+                        dispatch.reduce_mut(|state| state.valid_moves = filtered_moves);
+                        return;
                     }
-                    dispatch.reduce_mut(|state| state.valid_moves = filtered_moves);
-                    return;
                 }
             }
+
             log::info!("Empty square at row {}, col {}", row, col);
             dispatch.reduce_mut(|state| {
                 state.selected_piece = None;

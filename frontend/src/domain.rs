@@ -107,15 +107,12 @@ impl Game {
     }
 
     pub fn check_captures_moves(&self, player: &Player) -> bool {
-    self.pieces
-        .iter()
-        .filter(|p| p.owner == *player)
-        .any(|p| {
+        self.pieces.iter().filter(|p| p.owner == *player).any(|p| {
             self.valid_moves(p)
                 .iter()
                 .any(|(dest_row, _dest_col)| (*dest_row as i32 - p.row as i32).abs() == 2)
         })
-}
+    }
 
     pub fn capture(&mut self, row: usize, col: usize) {
         let index = self
@@ -132,6 +129,12 @@ impl Game {
             Player::Dark => Player::Light,
             Player::Light => Player::Dark,
         }
+    }
+
+    pub fn has_available_jumps(&self, piece: &GamePiece) -> bool {
+        self.valid_moves(piece)
+            .iter()
+            .any(|(dest_row, _)| (*dest_row as i32 - piece.row as i32).abs() == 2)
     }
 }
 
