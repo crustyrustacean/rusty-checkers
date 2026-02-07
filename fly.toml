@@ -1,5 +1,5 @@
 app = 'rusty-checkers'
-primary_region = 'sea'
+primary_region = 'yyz'
 
 [build]
 
