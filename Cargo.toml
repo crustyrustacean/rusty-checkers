@@ -7,5 +7,11 @@ members = [
 resolver = "3"
 
 [workspace.package]
-version = "0.20.0"
+version = "0.21.0"
 edition = "2024"
+authors = ["Jeffery D. Mitchell", "<crusty.rustacean@gmail.com>"]
+description = "A full stack checkers game, with Rama and Yew."
+readme = "README.md"
+repository = "https://github.com/crustyrustacean/rusty-checkers.git"
+license = "MIT"
+publish = false

@@ -1,0 +1,4 @@
+# configuration/local.yaml
+# override configuration for local development
+application:
+  host: 127.0.0.1
