@@ -97,7 +97,7 @@ pub fn Grid() -> Html {
                                 .collect();
                         }
                     } else {
-                        // End of turn logic
+                        
                         state.current_game.switch_turn();
 
                         let current_player = state.current_game.current_player.clone();

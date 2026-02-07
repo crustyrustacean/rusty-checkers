@@ -9,7 +9,7 @@ use yewdux::prelude::*;
 // turn_indicator component
 #[function_component]
 pub fn TurnIndicator() -> Html {
-    let (state, _) = use_store::<State>();
+    let (state, _dispatch) = use_store::<State>();
 
     html! {
         <section>
