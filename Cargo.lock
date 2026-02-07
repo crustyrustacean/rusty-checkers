@@ -181,7 +181,7 @@ dependencies = [
 
 [[package]]
 name = "backend"
-version = "0.22.0"
+version = "0.23.0"
 dependencies = [
  "chrono",
  "config",
@@ -816,7 +816,7 @@ dependencies = [
 
 [[package]]
 name = "frontend"
-version = "0.22.0"
+version = "0.23.0"
 dependencies = [
  "console_error_panic_hook",
  "gloo-net 0.6.0",
