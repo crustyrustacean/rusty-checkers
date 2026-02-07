@@ -6,7 +6,6 @@ pub use rama::error::BoxError as AppBoxError;
 pub use rama::error::ErrorContext as AppErrorContext;
 pub use rama::error::OpaqueError as AppOpaqueError;
 use rama::http::{StatusCode, response::Response, service::web::response::IntoResponse};
-use rama::telemetry::tracing;
 
 // Unified error type for the API
 #[derive(Debug, thiserror::Error)]

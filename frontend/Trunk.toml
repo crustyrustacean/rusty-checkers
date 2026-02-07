@@ -1,2 +1,3 @@
 [build]
 dist = "../public"
+public_url = "/public/"

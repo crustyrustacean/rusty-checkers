@@ -12,12 +12,10 @@ use rama::{
     Layer,
     error::BoxError,
     graceful::Shutdown,
-    http::headers::CacheControl,
-    http::layer::set_header::SetResponseHeaderLayer,
     http::layer::trace::TraceLayer,
     http::server::HttpServer,
-    http::service::fs::{DirectoryServeMode::NotFound, ServeDir},
-    http::service::web::{Router, response::DatastarScript},
+    http::service::fs::{DirectoryServeMode::NotFound, ServeDir, ServeFile},
+    http::service::web::Router,
     rt::Executor,
     tcp::server::TcpListener,
     telemetry::tracing,
@@ -31,11 +29,8 @@ pub struct Application {
 
 impl Application {
     pub async fn build(configuration: &Settings) -> Result<Self, AppBoxError> {
-        // get the static assets folder
-        let assets_dir = configuration.application.assets_dir.to_owned();
-
         // build app state
-        let state = AppState::new(assets_dir);
+        let state = AppState::new();
 
         // build the app router
         let router = Self::build_app_router(state);
@@ -63,16 +58,8 @@ impl Application {
     }
 
     pub fn build_app_router(state: AppState) -> Router<AppState> {
-        // create the directory for static assets to be served from
-        let assets_dir = ServeDir::new("public").with_directory_serve_mode(NotFound);
-
-        // add cache control policy to static assets
-        let cached_assets = SetResponseHeaderLayer::if_not_present_typed(
-            CacheControl::new()
-                .with_max_age_seconds(604800)
-                .with_public(),
-        )
-        .into_layer(assets_dir);
+        
+        let assets_dir = ServeDir::new("../public").with_directory_serve_mode(NotFound);
 
         Router::new_with_state(state)
             .with_sub_router_make_fn("/api", |router| {
@@ -80,8 +67,8 @@ impl Application {
                     router.with_get("/health_check", health_check)
                 })
             })
-            .with_get("/public/datastar.js", DatastarScript::default())
-            .with_sub_service("/public", cached_assets)
+            .with_sub_service("/public", assets_dir)
+            .with_get("/", ServeFile::new("../public/index.html"))
     }
 
     pub async fn run(self, configuration: &Settings) -> Result<(), BoxError> {

@@ -2,7 +2,6 @@
 
 // module declarations
 pub mod config;
-pub mod domain;
 pub mod errors;
 pub mod response;
 pub mod routes;
@@ -12,7 +11,6 @@ pub mod telemetry;
 
 // re-exports
 pub use config::*;
-pub use domain::*;
 pub use errors::*;
 pub use response::*;
 pub use startup::*;

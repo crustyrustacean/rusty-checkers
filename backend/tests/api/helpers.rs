@@ -1,10 +1,10 @@
 // test/api/helpers
 
 // dependencies
-use rusty_checkers::config::get_configuration;
-use rusty_checkers::startup::Application;
-use rusty_checkers::state::AppState;
-use rusty_checkers::telemetry::{get_subscriber, init_subscriber, make_request_span};
+use rusty_checkers_server_lib::config::get_configuration;
+use rusty_checkers_server_lib::startup::Application;
+use rusty_checkers_server_lib::state::AppState;
+use rusty_checkers_server_lib::telemetry::{get_subscriber, init_subscriber, make_request_span};
 use rama::Layer;
 use rama::Service;
 use rama::http::layer::trace::TraceLayer;
@@ -31,11 +31,9 @@ pub struct TestApp {
 pub async fn spawn_app() -> TestApp {
     LazyLock::force(&TRACING);
 
-    let configuration = get_configuration().expect("Failed to read configuration.");
+    let _configuration = get_configuration().expect("Failed to read configuration.");
   
-    let assets_dir = configuration.application.assets_dir.to_owned();
-
-    let state = AppState::new(assets_dir);
+    let state = AppState::new();
     let router = Application::build_app_router(state);
 
     TestApp { router }

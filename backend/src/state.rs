@@ -3,14 +3,10 @@
 // dependencies
 
 #[derive(Clone, Debug)]
-pub struct AppState {
-    pub assets_dir: String,
-}
+pub struct AppState {}
 
 impl AppState {
-    pub fn new(assets_dir: String) -> Self {
-        Self {
-            assets_dir,
-        }
+    pub fn new() -> Self {
+        Self {}
     }
 }

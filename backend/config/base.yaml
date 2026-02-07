@@ -2,5 +2,5 @@
 # base line configuration, regardless of deployment location
 application:
   port: 8000
-  assets_dir: "public"
+  assets_dir: "../public"
   shutdown_timeout: 10

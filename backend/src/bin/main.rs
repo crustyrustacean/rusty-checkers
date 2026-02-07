@@ -1,10 +1,10 @@
 // backend/src/main.rs
 
 // dependencies
-use rusty_checkers::config::get_configuration;
-use rusty_checkers::errors::{AppBoxError, AppErrorContext, AppOpaqueError};
-use rusty_checkers::startup::Application;
-use rusty_checkers::telemetry::{get_subscriber, init_subscriber};
+use rusty_checkers_server_lib::config::get_configuration;
+use rusty_checkers_server_lib::errors::{AppBoxError, AppErrorContext, AppOpaqueError};
+use rusty_checkers_server_lib::startup::Application;
+use rusty_checkers_server_lib::telemetry::{get_subscriber, init_subscriber};
 use rama::telemetry::tracing;
 
 #[tokio::main]

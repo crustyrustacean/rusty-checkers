@@ -8,7 +8,7 @@ name = "server"
 path = "src/bin/main.rs"
 
 [lib]
-name = "rusty_checkers"
+name = "rusty_checkers_server_lib"
 path = "src/lib.rs"
 
 [dependencies]
