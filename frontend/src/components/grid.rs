@@ -84,10 +84,19 @@ pub fn Grid() -> Html {
                     log::info!("Found piece at row {}, col {}", row, col);
                     dispatch.reduce_mut(|state| state.selected_piece = Some((row, col)));
                     let moves = &state.current_game.valid_moves(piece);
+                    let captures_exist = state.current_game.check_captures_moves(&state.current_game.current_player);
+                    let filtered_moves = if captures_exist {
+                        moves.iter()
+                            .filter(|(dest_row, _dest_col)| (*dest_row as i32 - row as i32).abs() == 2)
+                            .cloned()
+                            .collect()
+                    } else {
+                        moves.to_vec()
+                    };
                     for (dest_row, dest_col) in moves.iter() {
                         log::info!("Valid move to: row {}, col {}", dest_row, dest_col);
                     }
-                    dispatch.reduce_mut(|state| state.valid_moves = moves.to_vec());
+                    dispatch.reduce_mut(|state| state.valid_moves = filtered_moves);
                     return;
                 }
             }

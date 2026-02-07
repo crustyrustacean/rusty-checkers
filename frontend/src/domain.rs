@@ -106,6 +106,17 @@ impl Game {
         }
     }
 
+    pub fn check_captures_moves(&self, player: &Player) -> bool {
+    self.pieces
+        .iter()
+        .filter(|p| p.owner == *player)
+        .any(|p| {
+            self.valid_moves(p)
+                .iter()
+                .any(|(dest_row, _dest_col)| (*dest_row as i32 - p.row as i32).abs() == 2)
+        })
+}
+
     pub fn capture(&mut self, row: usize, col: usize) {
         let index = self
             .pieces
