@@ -53,7 +53,7 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-COPY --from=backend-builder /app/target/release/server /app/server
+COPY --from=backend-builder /app/target/release/checkers-server /app/server
 COPY --from=frontend-builder /app/public /app/public
 COPY backend/config /app/config
 
