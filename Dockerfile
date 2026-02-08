@@ -9,6 +9,7 @@ FROM chef AS planner
 
 COPY Cargo.toml Cargo.lock ./
 COPY backend ./backend
+COPY common ./common
 COPY frontend ./frontend
 
 RUN cargo chef prepare --recipe-path recipe.json
@@ -23,6 +24,7 @@ WORKDIR /app
 
 COPY Cargo.toml Cargo.lock ./
 COPY frontend ./frontend
+COPY common ./common
 COPY backend ./backend
 
 WORKDIR /app/frontend
@@ -39,6 +41,7 @@ RUN cargo chef cook --release --recipe-path recipe.json
 # Copy source and build
 COPY Cargo.toml Cargo.lock ./
 COPY backend ./backend
+COPY common ./common
 COPY frontend ./frontend
 
 WORKDIR /app/backend

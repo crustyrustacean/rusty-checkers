@@ -181,7 +181,7 @@ dependencies = [
 
 [[package]]
 name = "backend"
-version = "0.25.0"
+version = "0.25.1"
 dependencies = [
  "chrono",
  "common",
@@ -371,7 +371,7 @@ dependencies = [
 
 [[package]]
 name = "common"
-version = "0.25.0"
+version = "0.25.1"
 
 [[package]]
 name = "compression-codecs"
@@ -821,7 +821,7 @@ dependencies = [
 
 [[package]]
 name = "frontend"
-version = "0.25.0"
+version = "0.25.1"
 dependencies = [
  "common",
  "console_error_panic_hook",
