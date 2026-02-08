@@ -12,6 +12,12 @@ including forced captures, multi-jump sequences, and king promotion.
 
 ```
 rusty-checkers/
+├── common/           # Shared game domain library
+│   └── src/
+│       ├── lib.rs     # Public API (re-exports Game, GamePiece, Player)
+│       ├── game.rs    # Game struct and core checkers logic
+│       ├── piece.rs   # GamePiece struct
+│       └── player.rs  # Player enum
 ├── backend/          # HTTP server (Rama + Tokio)
 │   ├── src/
 │   │   ├── bin/      # Server entry point
@@ -34,7 +40,6 @@ rusty-checkers/
 │   │   │   └── reset_button.rs   # New game button
 │   │   ├── views/
 │   │   │   └── game_view.rs      # Main game layout
-│   │   ├── domain.rs  # Game rules and types
 │   │   └── state.rs   # Application state
 │   └── index.html
 ├── Dockerfile         # Multi-stage production build
@@ -42,10 +47,11 @@ rusty-checkers/
 └── justfile           # Task runner recipes
 ```
 
-| Layer    | Crate     | Framework         | Role                                      |
-|----------|-----------|-------------------|--------------------------------------------|
-| Backend  | `backend` | Rama, Tokio       | Serves static assets and health check API  |
-| Frontend | `frontend`| Yew, Yewdux       | Game UI and logic, compiled to WebAssembly |
+| Layer    | Crate      | Framework         | Role                                          |
+|----------|------------|-------------------|------------------------------------------------|
+| Common   | `common`   | —                 | Shared game domain types and core checkers logic |
+| Backend  | `backend`  | Rama, Tokio       | Serves static assets and health check API      |
+| Frontend | `frontend` | Yew, Yewdux       | Game UI, compiled to WebAssembly               |
 
 ## Game Rules
 
@@ -125,10 +131,10 @@ cargo test
 
 The test suite includes:
 
+- **Common unit tests** (`common/src/game.rs`) — move validation and board state
+  logic
 - **Backend integration tests** (`backend/tests/api/`) — health check endpoint
   verification
-- **Frontend unit tests** (`frontend/src/domain.rs`) — move validation and board
-  state logic
 
 ## Docker
 
@@ -176,6 +182,21 @@ static assets path.
 
 ## Dependencies
 
+### Common
+
+The `common` crate (`checkers_common`) is the shared game domain library. It
+contains the core types and logic for the checkers game and has **no external
+dependencies**, keeping it lightweight and portable across both native and WASM
+targets.
+
+It exports three types:
+
+| Type        | Purpose                                        |
+|-------------|------------------------------------------------|
+| `Game`      | Board state, move validation, captures, turns  |
+| `GamePiece` | Individual piece with position and king status |
+| `Player`    | Dark / Light player enum                       |
+
 ### Backend
 
 | Crate                       | Purpose                         |
@@ -193,6 +214,7 @@ static assets path.
 
 | Crate                         | Purpose                           |
 |-------------------------------|-----------------------------------|
+| `checkers_common`             | Shared game domain types and logic |
 | `yew`                         | Component-based UI framework      |
 | `yewdux`                      | Global state management           |
 | `web-sys`                     | Web API bindings (Canvas, DOM)    |
