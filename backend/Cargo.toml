@@ -16,7 +16,7 @@ chrono = "0.4.42"
 common = { path = "../common" }
 config = "0.15.19"
 rama = { git = "https://github.com/plabayo/rama.git", tag = "rama-0.3.0-alpha.4", features = [ "http-full"] }
-serde = { version = "1.0.228", features = ["derive"] }
+serde = { workspace = true }
 serde-aux = "4.7.0"
 thiserror = "2.0.17"
 tokio = { version = "1.49.0", features = ["full"] }

@@ -4,8 +4,9 @@
 // dependencies
 use crate::GamePiece;
 use crate::Player;
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Game {
     pub pieces: Vec<GamePiece>,
     pub captured_pieces: Vec<GamePiece>,

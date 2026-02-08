@@ -1,6 +1,9 @@
 // common/src/player.rs
 
-#[derive(Debug, Clone, PartialEq)]
+// dependencies
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Deserialize, Clone, PartialEq, Serialize)]
 pub enum Player {
     Dark,
     Light,

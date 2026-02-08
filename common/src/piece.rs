@@ -2,8 +2,9 @@
 
 // dependencies
 use crate::Player;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Deserialize, Clone, PartialEq, Serialize)]
 pub struct GamePiece {
     pub owner: Player,
     pub row: usize,
