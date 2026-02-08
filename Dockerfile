@@ -58,6 +58,7 @@ COPY --from=frontend-builder /app/public /app/public
 COPY backend/config /app/config
 
 ENV APP_ENVIRONMENT=production
+ENV ASSETS_DIR=/app/public
 
 EXPOSE 8080
 

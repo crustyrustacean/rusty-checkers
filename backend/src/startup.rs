@@ -59,7 +59,7 @@ impl Application {
 
     pub fn build_app_router(state: AppState) -> Router<AppState> {
         
-        let assets_dir = ServeDir::new("../public").with_directory_serve_mode(NotFound);
+        let assets_dir = std::env::var("ASSETS_DIR").unwrap_or_else(|_| "../public".to_string());
 
         Router::new_with_state(state)
             .with_sub_router_make_fn("/api", |router| {
@@ -67,8 +67,8 @@ impl Application {
                     router.with_get("/health_check", health_check)
                 })
             })
-            .with_sub_service("/public", assets_dir)
-            .with_get("/", ServeFile::new("../public/index.html"))
+            .with_sub_service("/public", ServeDir::new(&assets_dir).with_directory_serve_mode(NotFound))
+            .with_get("/", ServeFile::new(format!("{}/index.html", assets_dir)))
     }
 
     pub async fn run(self, configuration: &Settings) -> Result<(), BoxError> {
