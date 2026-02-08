@@ -1,6 +1,9 @@
-// frontend/src/domain.rs
+// common/src/game.rs
+
 
 // dependencies
+use crate::GamePiece;
+use crate::Player;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Game {
@@ -141,31 +144,6 @@ impl Game {
 impl Default for Game {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum Player {
-    Dark,
-    Light,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct GamePiece {
-    pub owner: Player,
-    pub row: usize,
-    pub col: usize,
-    pub is_kinged: bool,
-}
-
-impl GamePiece {
-    pub fn new(player: Player, row: usize, col: usize) -> Self {
-        Self {
-            owner: player,
-            row,
-            col,
-            is_kinged: false,
-        }
     }
 }
 

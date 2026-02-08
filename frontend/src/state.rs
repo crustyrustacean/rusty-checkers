@@ -1,7 +1,7 @@
 // src/state.rs
 
 // dependencies
-use crate::domain::Game;
+use checkers_common::Game;
 use yewdux::Store;
 
 #[derive(Default, Clone, PartialEq, Store)]

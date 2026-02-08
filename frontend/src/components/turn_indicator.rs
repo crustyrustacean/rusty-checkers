@@ -1,7 +1,7 @@
 // frontend/src/components/turn_indicator.rs
 
 // dependencies
-use crate::domain::Player;
+use checkers_common::Player;
 use crate::state::State;
 use yew::prelude::*;
 use yewdux::prelude::*;

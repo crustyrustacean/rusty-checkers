@@ -13,6 +13,7 @@ path = "src/lib.rs"
 
 [dependencies]
 chrono = "0.4.42"
+common = { path = "../common" }
 config = "0.15.19"
 rama = { git = "https://github.com/plabayo/rama.git", tag = "rama-0.3.0-alpha.4", features = [ "http-full"] }
 serde = { version = "1.0.228", features = ["derive"] }
@@ -25,14 +26,4 @@ tracing-subscriber = "0.3.22"
 uuid = "1.19.0"
 
 
-[profile.release]
-lto = true         
-codegen-units = 1   
-strip = true        
-panic = "abort"     
 
-[profile.dev]
-debug = true        
-
-[profile.dev.package."*"]
-opt-level = 2

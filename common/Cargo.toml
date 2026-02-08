@@ -1,0 +1,16 @@
+[package]
+name = "common"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+description.workspace = true
+readme.workspace = true
+repository.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lib]
+name = "checkers_common"
+path = "src/lib.rs"
+
+[dependencies]

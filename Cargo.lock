@@ -181,9 +181,10 @@ dependencies = [
 
 [[package]]
 name = "backend"
-version = "0.24.0"
+version = "0.25.0"
 dependencies = [
  "chrono",
+ "common",
  "config",
  "rama",
  "serde",
@@ -367,6 +368,10 @@ checksum = "75443c44cd6b379beb8c5b45d85d0773baf31cce901fe7bb252f4eff3008ef7d"
 dependencies = [
  "cc",
 ]
+
+[[package]]
+name = "common"
+version = "0.25.0"
 
 [[package]]
 name = "compression-codecs"
@@ -816,8 +821,9 @@ dependencies = [
 
 [[package]]
 name = "frontend"
-version = "0.24.0"
+version = "0.25.0"
 dependencies = [
+ "common",
  "console_error_panic_hook",
  "gloo-net 0.6.0",
  "log",

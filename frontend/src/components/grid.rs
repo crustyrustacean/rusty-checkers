@@ -1,7 +1,7 @@
 // src/components/grid.rs
 
 // dependencies
-use crate::domain::Player;
+use checkers_common::Player;
 use crate::state::State;
 use wasm_bindgen::JsCast;
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
