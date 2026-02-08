@@ -1,4 +1,4 @@
-// src/components/grid.rs
+// frontend/src/components/turn_indicator.rs
 
 // dependencies
 use crate::domain::Player;
@@ -6,19 +6,22 @@ use crate::state::State;
 use yew::prelude::*;
 use yewdux::prelude::*;
 
-// turn_indicator component
 #[function_component]
 pub fn TurnIndicator() -> Html {
     let (state, _dispatch) = use_store::<State>();
+    let current = &state.current_game.current_player;
 
     html! {
-        <section>
-            <div style={if state.current_game.current_player == Player::Dark {"background: yellow"} else { "" }}>
-                { "Player: Dark"}
+        <div class="panel">
+            <h2>{"Current Turn"}</h2>
+            <div class={classes!("player-indicator", (current == &Player::Dark).then_some("active"))}>
+                <div class="piece-preview dark"></div>
+                <span>{"Dark"}</span>
             </div>
-            <div style={if state.current_game.current_player == Player::Light {"background: yellow"} else { "" }}>
-                { "Player: Light"}
+            <div class={classes!("player-indicator", (current == &Player::Light).then_some("active"))}>
+                <div class="piece-preview light"></div>
+                <span>{"Light"}</span>
             </div>
-        </section>
+        </div>
     }
 }

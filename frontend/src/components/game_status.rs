@@ -7,13 +7,12 @@ use crate::state::State;
 use yew::prelude::*;
 use yewdux::prelude::*;
 
-// turn_indicator component
 #[function_component]
 pub fn GameStatus() -> Html {
     let (state, dispatch) = use_store::<State>();
 
     let reset_game = {
-        Callback::from( move |_| {
+        Callback::from(move |_| {
             dispatch.reduce_mut(|state| {
                 state.current_game = Game::new();
             })
@@ -27,12 +26,10 @@ pub fn GameStatus() -> Html {
         };
 
         html! {
-            <section>
-                <article>
-                    <p>{"Game over! "}{winner_text}{" wins!"}</p>
-                    <ResetButton id="reset_button" onclick={reset_game} />
-                </article>
-            </section>
+            <div class="winner-banner">
+                <h2>{winner_text}{" wins!"}</h2>
+                <ResetButton id="reset_button" onclick={reset_game} />
+            </div>
         }
     } else {
         html! {}

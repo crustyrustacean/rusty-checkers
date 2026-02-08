@@ -1,7 +1,7 @@
 // frontend/src/app.rs
 
 // dependencies
-use crate::components::{GameStatus, Grid, TurnIndicator};
+use crate::components::{GameStatus, Grid, RulesCard, TurnIndicator};
 use crate::state::State;
 use crate::views::GameView;
 use yew::prelude::*;
@@ -13,9 +13,14 @@ pub fn App() -> Html {
 
     html! {
         <GameView>
-            <Grid />
-            <TurnIndicator />
-            <GameStatus />
+            <div class="board-wrapper">
+                <Grid />
+            </div>
+            <div class="sidebar">
+                <TurnIndicator />
+                <GameStatus />
+                <RulesCard />
+            </div>
         </GameView>
     }
 }
