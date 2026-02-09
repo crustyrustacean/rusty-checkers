@@ -1,8 +1,8 @@
 // src/components/grid.rs
 
 // dependencies
-use checkers_common::Player;
 use crate::state::State;
+use checkers_common::Player;
 use wasm_bindgen::JsCast;
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
 use yew::prelude::*;
@@ -65,7 +65,7 @@ pub fn Grid() -> Html {
                             }
                         }
                     }
-                    
+
                     let can_jump_again = if was_jump && !just_kinged {
                         state
                             .current_game
@@ -97,7 +97,6 @@ pub fn Grid() -> Html {
                                 .collect();
                         }
                     } else {
-                        
                         state.current_game.switch_turn();
 
                         let current_player = state.current_game.current_player.clone();

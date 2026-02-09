@@ -5,7 +5,7 @@ use crate::config::Settings;
 use crate::errors::AppBoxError;
 use crate::errors::AppErrorContext;
 use crate::errors::AppOpaqueError;
-use crate::routes::health_check;
+use crate::routes::{health_check, web_socket::echo_handler};
 use crate::state::AppState;
 use crate::telemetry::make_request_span;
 use rama::{
@@ -16,7 +16,9 @@ use rama::{
     http::server::HttpServer,
     http::service::fs::{DirectoryServeMode::NotFound, ServeDir, ServeFile},
     http::service::web::Router,
+    http::ws::handshake::server::WebSocketAcceptor,
     rt::Executor,
+    service::service_fn,
     tcp::server::TcpListener,
     telemetry::tracing,
 };
@@ -58,16 +60,20 @@ impl Application {
     }
 
     pub fn build_app_router(state: AppState) -> Router<AppState> {
-        
         let assets_dir = std::env::var("ASSETS_DIR").unwrap_or_else(|_| "../public".to_string());
 
         Router::new_with_state(state)
             .with_sub_router_make_fn("/api", |router| {
                 router.with_sub_router_make_fn("/v1", |router| {
-                    router.with_get("/health_check", health_check)
+                    router
+                        .with_get("/health_check", health_check)
+                        .with_sub_service("/ws", WebSocketAcceptor::new().into_service(service_fn(echo_handler)))
                 })
             })
-            .with_sub_service("/public", ServeDir::new(&assets_dir).with_directory_serve_mode(NotFound))
+            .with_sub_service(
+                "/public",
+                ServeDir::new(&assets_dir).with_directory_serve_mode(NotFound),
+            )
             .with_get("/", ServeFile::new(format!("{}/index.html", assets_dir)))
     }
 

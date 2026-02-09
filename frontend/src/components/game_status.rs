@@ -1,9 +1,9 @@
 // src/components/game_status.rs
 
 // dependencies
-use checkers_common::{Game, Player};
 use crate::components::ResetButton;
 use crate::state::State;
+use checkers_common::{Game, Player};
 use yew::prelude::*;
 use yewdux::prelude::*;
 

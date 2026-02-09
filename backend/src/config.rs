@@ -16,7 +16,7 @@ pub struct ApplicationSettings {
     pub port: u16,
     pub host: String,
     pub assets_dir: String,
-        pub shutdown_timeout: u64,
+    pub shutdown_timeout: u64,
 }
 
 #[derive(Debug)]

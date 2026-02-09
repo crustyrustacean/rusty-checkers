@@ -1,6 +1,5 @@
 // common/src/game.rs
 
-
 // dependencies
 use crate::GamePiece;
 use crate::Player;

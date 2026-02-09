@@ -1,11 +1,11 @@
 // backend/src/main.rs
 
 // dependencies
+use rama::telemetry::tracing;
 use rusty_checkers_server_lib::config::get_configuration;
 use rusty_checkers_server_lib::errors::{AppBoxError, AppErrorContext, AppOpaqueError};
 use rusty_checkers_server_lib::startup::Application;
 use rusty_checkers_server_lib::telemetry::{get_subscriber, init_subscriber};
-use rama::telemetry::tracing;
 
 #[tokio::main]
 async fn main() -> Result<(), AppBoxError> {

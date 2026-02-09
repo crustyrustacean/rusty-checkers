@@ -1,15 +1,15 @@
 // test/api/helpers
 
 // dependencies
-use rusty_checkers_server_lib::config::get_configuration;
-use rusty_checkers_server_lib::startup::Application;
-use rusty_checkers_server_lib::state::AppState;
-use rusty_checkers_server_lib::telemetry::{get_subscriber, init_subscriber, make_request_span};
 use rama::Layer;
 use rama::Service;
 use rama::http::layer::trace::TraceLayer;
 use rama::http::service::web::Router;
 use rama::http::{Body, Request, Response};
+use rusty_checkers_server_lib::config::get_configuration;
+use rusty_checkers_server_lib::startup::Application;
+use rusty_checkers_server_lib::state::AppState;
+use rusty_checkers_server_lib::telemetry::{get_subscriber, init_subscriber, make_request_span};
 use std::sync::LazyLock;
 
 static TRACING: LazyLock<()> = LazyLock::new(|| {
@@ -32,7 +32,7 @@ pub async fn spawn_app() -> TestApp {
     LazyLock::force(&TRACING);
 
     let _configuration = get_configuration().expect("Failed to read configuration.");
-  
+
     let state = AppState::new();
     let router = Application::build_app_router(state);
 

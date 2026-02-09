@@ -8,6 +8,6 @@ mod player;
 
 // re-exports
 pub use game::Game;
-pub use piece::GamePiece;
 pub use messages::*;
+pub use piece::GamePiece;
 pub use player::Player;

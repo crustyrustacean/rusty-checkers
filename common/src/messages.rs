@@ -37,9 +37,9 @@ mod tests {
         assert_eq!(json, "\"JoinGame\"");
 
         // 2. Test MakeMove (Struct Variant)
-        let msg = ClientMessage::MakeMove { 
-            start: (2, 0), 
-            end: (3, 1) 
+        let msg = ClientMessage::MakeMove {
+            start: (2, 0),
+            end: (3, 1),
         };
         let json = serde_json::to_string(&msg).unwrap();
         // Verifies the "wire format" is exactly what we expect:
@@ -51,7 +51,7 @@ mod tests {
     fn test_server_message_deserialization() {
         // Simulate receiving a JSON string from the server
         let input_json = r#"{"GameStarted":"Dark"}"#;
-        
+
         // Attempt to parse it back into Rust
         let msg: ServerMessage = serde_json::from_str(input_json).unwrap();
 
