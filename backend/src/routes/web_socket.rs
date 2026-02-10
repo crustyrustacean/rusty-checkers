@@ -25,43 +25,48 @@ pub async fn game_handler(
 
     loop {
         tokio::select! {
-                // Messages from the channel (from other players or server)
-                Some(msg) = rx.recv() => {
-                    if ws.send_message(Message::text(msg)).await.is_err() {
-                        break;
-                    }
-                }
-                // Messages from this client's WebSocket
-                result = ws.recv_message() => {
-                    match result {
-                        Ok(Message::Text(text)) => {
-                            match serde_json::from_str::<ClientMessage>(&text) {
-                                Ok(ClientMessage::JoinGame) => {
-                                    if let Some((game_id, player)) = handle_join_game(tx.clone(), &game_server).await {
-                                        my_game_id = Some(game_id);
-                                        my_player = Some(player);
-                                    }
-                                }
-                                Ok(ClientMessage::MakeMove { start, end }) => {
-                                    tracing::info!("MakeMove: {:?} -> {:?}", start, end);
-                                    if let (Some(gid), Some(player)) = (&my_game_id, &my_player) {
-            handle_make_move(gid, player, start, end, &tx, &game_server).await;
-        } else {
-            let _ = tx.send(serde_json::to_string(&ServerMessage::Error("Not in a game".into())).unwrap());
-        }
-                                }
-                                Err(e) => {
-                                    tracing::warn!("Invalid message: {}", e);
-                                    let error = ServerMessage::Error(format!("Invalid message: {}", e));
-                                    let _ = tx.send(serde_json::to_string(&error).unwrap());
-                                }
+                        // Messages from the channel (from other players or server)
+                        Some(msg) = rx.recv() => {
+                            if ws.send_message(Message::text(msg)).await.is_err() {
+                                break;
                             }
                         }
-                        Ok(_) => {} // Ignore binary, ping, pong
-                        Err(_) => break,
-                    }
+                        // Messages from this client's WebSocket
+                        result = ws.recv_message() => {
+                            match result {
+                                Ok(Message::Text(text)) => {
+                                    match serde_json::from_str::<ClientMessage>(&text) {
+                                        Ok(ClientMessage::JoinGame) => {
+                                            if let Some((game_id, player)) = handle_join_game(tx.clone(), &game_server).await {
+                                                my_game_id = Some(game_id);
+                                                my_player = Some(player);
+                                            }
+                                        }
+                                        Ok(ClientMessage::MakeMove { start, end }) => {
+                                            tracing::info!("MakeMove: {:?} -> {:?}", start, end);
+                                            if let (Some(gid), Some(player)) = (&my_game_id, &my_player) {
+                    handle_make_move(gid, player, start, end, &tx, &game_server).await;
+                } else {
+                    let _ = tx.send(serde_json::to_string(&ServerMessage::Error("Not in a game".into())).unwrap());
                 }
+                                        }
+                                        Ok(ClientMessage::PlayAgain) => {
+            if let Some(gid) = &my_game_id {
+                handle_play_again(gid, &game_server).await;
             }
+        }
+                                        Err(e) => {
+                                            tracing::warn!("Invalid message: {}", e);
+                                            let error = ServerMessage::Error(format!("Invalid message: {}", e));
+                                            let _ = tx.send(serde_json::to_string(&error).unwrap());
+                                        }
+                                    }
+                                }
+                                Ok(_) => {} // Ignore binary, ping, pong
+                                Err(_) => break,
+                            }
+                        }
+                    }
     }
 
     tracing::info!("Client disconnected");
@@ -237,6 +242,33 @@ async fn handle_make_move(
             });
         }
     }
+
+    // Broadcast new state to both players
+    let game_state =
+        serde_json::to_string(&ServerMessage::GameState(session.game.clone())).unwrap();
+
+    tracing::info!("Broadcasting game state to players");
+
+    if let Some(dark_tx) = &session.dark_player {
+        tracing::info!("Sending to dark player");
+        let _ = dark_tx.send(game_state.clone());
+    }
+    if let Some(light_tx) = &session.light_player {
+        tracing::info!("Sending to light player");
+        let _ = light_tx.send(game_state);
+    }
+}
+
+async fn handle_play_again(game_id: &GameId, game_server: &Arc<GameServer>) {
+    let mut games = game_server.games.write().await;
+    let Some(session) = games.get_mut(game_id) else {
+        return;
+    };
+
+    // Reset the game
+    session.game = Game::new();
+
+    tracing::info!("Game {} reset for play again", game_id);
 
     // Broadcast new state to both players
     let game_state =

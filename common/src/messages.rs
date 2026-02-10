@@ -12,6 +12,7 @@ pub enum ClientMessage {
         start: (usize, usize),
         end: (usize, usize),
     },
+    PlayAgain
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
