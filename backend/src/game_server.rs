@@ -4,12 +4,15 @@
 use checkers_common::Game;
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::RwLock;
+use tokio::sync::{RwLock, mpsc};
 
 pub type GameId = String;
+pub type PlayerSender = mpsc::UnboundedSender<String>;
 
 pub struct GameSession {
     pub game: Game,
+    pub dark_player: Option<PlayerSender>,
+    pub light_player: Option<PlayerSender>,
 }
 
 pub struct GameServer {

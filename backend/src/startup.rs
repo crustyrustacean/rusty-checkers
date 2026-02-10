@@ -2,11 +2,11 @@
 
 // dependencies
 use crate::config::Settings;
-use crate::game_server::GameServer;
 use crate::errors::AppBoxError;
 use crate::errors::AppErrorContext;
 use crate::errors::AppOpaqueError;
-use crate::routes::{health_check, web_socket::echo_handler};
+use crate::game_server::GameServer;
+use crate::routes::{health_check, web_socket::game_handler};
 use crate::state::AppState;
 use crate::telemetry::make_request_span;
 use rama::{
@@ -71,13 +71,13 @@ impl Application {
                 router.with_sub_router_make_fn("/v1", |router| {
                     router
                         .with_get("/health_check", health_check)
-                        .with_sub_service("/ws", WebSocketAcceptor::new().into_service(service_fn(move |ws| {
-                            let server = gs.clone();
-                            async move {
-                                echo_handler(ws, server).await
-                            }
-                        }))
-            )
+                        .with_sub_service(
+                            "/ws",
+                            WebSocketAcceptor::new().into_service(service_fn(move |ws| {
+                                let server = gs.clone();
+                                async move { game_handler(ws, server).await }
+                            })),
+                        )
                 })
             })
             .with_sub_service(
