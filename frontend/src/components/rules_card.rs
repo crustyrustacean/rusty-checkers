@@ -1,6 +1,9 @@
+// frontend/src/components/rules_card.rs
+
+// dependencies
 use yew::prelude::*;
 
-#[function_component]
+#[component]
 pub fn RulesCard() -> Html {
     html! {
         <div class="panel">

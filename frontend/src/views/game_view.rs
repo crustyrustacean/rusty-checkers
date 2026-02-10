@@ -8,7 +8,7 @@ pub struct GameViewProps {
     pub children: Children,
 }
 
-#[function_component]
+#[component]
 pub fn GameView(props: &GameViewProps) -> Html {
     html! {
         <div class="game-container">

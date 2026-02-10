@@ -14,7 +14,7 @@ pub enum LobbyState {
     Playing { my_color: Player, game: Game },
 }
 
-#[function_component]
+#[component]
 pub fn Lobby() -> Html {
     let state = use_state(|| LobbyState::Connecting);
     let socket: UseStateHandle<Option<Rc<GameSocket>>> = use_state(|| None);

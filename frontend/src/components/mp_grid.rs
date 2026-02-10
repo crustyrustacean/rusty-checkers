@@ -13,7 +13,7 @@ pub struct MpGridProps {
     pub on_move: Callback<((usize, usize), (usize, usize))>,
 }
 
-#[function_component]
+#[component]
 pub fn MpGrid(props: &MpGridProps) -> Html {
     let canvas_ref = use_node_ref();
     let selected = use_state(|| None::<(usize, usize)>);

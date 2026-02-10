@@ -9,7 +9,7 @@ pub struct ResetButtonProps {
     pub onclick: Callback<MouseEvent>,
 }
 
-#[function_component]
+#[component]
 pub fn ResetButton(props: &ResetButtonProps) -> Html {
     html! {
         <button onclick={props.onclick.clone()}>

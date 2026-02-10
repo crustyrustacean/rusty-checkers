@@ -1,3 +1,5 @@
+# Rusty Checkers - Trunk.toml configuration
+
 [build]
 dist = "../public"
 public_url = "/public/"

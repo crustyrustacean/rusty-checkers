@@ -13,15 +13,18 @@ pub struct GameSocket {
 
 impl GameSocket {
     pub fn connect(on_message: Callback<ServerMessage>) -> Result<Self, JsValue> {
-        let window = web_sys::window().unwrap();
+        let window =
+            web_sys::window().ok_or_else(|| JsValue::from_str("No window object available"))?;
         let location = window.location();
-        let protocol = if location.protocol().unwrap() == "https:" {
-            "wss"
-        } else {
-            "ws"
-        };
-        let host = location.host().unwrap();
-        let url = format!("{}://{}/api/v1/ws", protocol, host);
+        let protocol = location
+            .protocol()
+            .map_err(|_| JsValue::from_str("Failed to get protocol"))?;
+        let host = location
+            .host()
+            .map_err(|_| JsValue::from_str("Failed to get host"))?;
+
+        let scheme = if protocol == "https:" { "wss" } else { "ws" };
+        let url = format!("{}://{}/api/v1/ws", scheme, host);
 
         log::info!("Connecting to WebSocket: {}", url);
         let ws = WebSocket::new(&url)?;
@@ -29,8 +32,11 @@ impl GameSocket {
         let ws_clone = ws.clone();
         let onopen_callback = Closure::<dyn FnMut()>::new(move || {
             log::info!("WebSocket connected, sending JoinGame");
-            let msg = serde_json::to_string(&ClientMessage::JoinGame).unwrap();
-            let _ = ws_clone.send_with_str(&msg);
+            if let Ok(msg) = serde_json::to_string(&ClientMessage::JoinGame) {
+                let _ = ws_clone.send_with_str(&msg);
+            } else {
+                log::error!("Failed to serialize JoinGame");
+            }
         });
         ws.set_onopen(Some(onopen_callback.as_ref().unchecked_ref()));
         onopen_callback.forget();
