@@ -201,14 +201,11 @@ async fn handle_make_move(
         .pieces
         .iter_mut()
         .find(|p| p.row == end.0 && p.col == end.1)
-    {
-        if (p.row == 0 && p.owner == Player::Light) || (p.row == 7 && p.owner == Player::Dark) {
-            if !p.is_kinged {
+        && ((p.row == 0 && p.owner == Player::Light) || (p.row == 7 && p.owner == Player::Dark))
+            && !p.is_kinged {
                 p.is_kinged = true;
                 just_kinged = true;
             }
-        }
-    }
 
     // Check for multi-jump
     let can_jump_again = if was_jump && !just_kinged {
