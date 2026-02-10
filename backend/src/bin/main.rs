@@ -11,7 +11,7 @@ use rusty_checkers_server_lib::telemetry::{get_subscriber, init_subscriber};
 async fn main() -> Result<(), AppBoxError> {
     // initialize tracing
     let subscriber = get_subscriber(
-        "crusty-metallion".into(),
+        "rusty-checkers".into(),
         "info,rama=debug".into(),
         std::io::stdout,
     );
