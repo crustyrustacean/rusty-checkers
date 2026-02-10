@@ -2,6 +2,7 @@
 
 // dependencies
 use crate::config::Settings;
+use crate::game_server::GameServer;
 use crate::errors::AppBoxError;
 use crate::errors::AppErrorContext;
 use crate::errors::AppOpaqueError;
@@ -62,12 +63,21 @@ impl Application {
     pub fn build_app_router(state: AppState) -> Router<AppState> {
         let assets_dir = std::env::var("ASSETS_DIR").unwrap_or_else(|_| "../public".to_string());
 
+        let game_server = GameServer::new();
+        let gs = game_server.clone();
+
         Router::new_with_state(state)
             .with_sub_router_make_fn("/api", |router| {
                 router.with_sub_router_make_fn("/v1", |router| {
                     router
                         .with_get("/health_check", health_check)
-                        .with_sub_service("/ws", WebSocketAcceptor::new().into_service(service_fn(echo_handler)))
+                        .with_sub_service("/ws", WebSocketAcceptor::new().into_service(service_fn(move |ws| {
+                            let server = gs.clone();
+                            async move {
+                                echo_handler(ws, server).await
+                            }
+                        }))
+            )
                 })
             })
             .with_sub_service(

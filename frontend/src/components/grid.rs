@@ -55,16 +55,12 @@ pub fn Grid() -> Html {
                         .pieces
                         .iter_mut()
                         .find(|p| p.row == row && p.col == col)
-                    {
-                        if (p.row == 0 && p.owner == Player::Light)
-                            || (p.row == 7 && p.owner == Player::Dark)
-                        {
-                            if !p.is_kinged {
+                        && ((p.row == 0 && p.owner == Player::Light)
+                            || (p.row == 7 && p.owner == Player::Dark))
+                            && !p.is_kinged {
                                 p.is_kinged = true;
                                 just_kinged = true;
                             }
-                        }
-                    }
 
                     let can_jump_again = if was_jump && !just_kinged {
                         state
