@@ -175,7 +175,7 @@ dependencies = [
 
 [[package]]
 name = "backend"
-version = "0.31.0"
+version = "0.33.0"
 dependencies = [
  "chrono",
  "common",
@@ -360,7 +360,7 @@ dependencies = [
 
 [[package]]
 name = "common"
-version = "0.31.0"
+version = "0.33.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -779,7 +779,7 @@ dependencies = [
 
 [[package]]
 name = "frontend"
-version = "0.31.0"
+version = "0.33.0"
 dependencies = [
  "common",
  "console_error_panic_hook",
