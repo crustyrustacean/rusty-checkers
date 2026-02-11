@@ -2,8 +2,8 @@
 
 // dependencies
 use checkers_common::{Game, Player};
-use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
+use wasm_bindgen::prelude::*;
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement, HtmlImageElement};
 use yew::prelude::*;
 
@@ -125,7 +125,13 @@ pub fn MpGrid(props: &MpGridProps) -> Html {
         let light_img = light_img.clone();
 
         use_effect_with(
-            (game.clone(), (*selected), (*valid_moves).clone(), (*dark_img).clone(), (*light_img).clone()),
+            (
+                game.clone(),
+                (*selected),
+                (*valid_moves).clone(),
+                (*dark_img).clone(),
+                (*light_img).clone(),
+            ),
             move |_| {
                 let Some(canvas) = canvas_ref.cast::<HtmlCanvasElement>() else {
                     return;

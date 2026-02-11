@@ -3,13 +3,14 @@
 // dependencies
 use crate::components::{MpGrid, RulesCard};
 use crate::websocket::GameSocket;
-use checkers_common::{ClientMessage, Game, Player, ServerMessage};
+use checkers_common::{AiDifficulty, ClientMessage, Game, Player, ServerMessage};
 use std::cell::RefCell;
 use std::rc::Rc;
 use yew::prelude::*;
 
 pub enum LobbyState {
     Connecting,
+    SelectMode,
     WaitingForOpponent,
     Playing { my_color: Player, game: Game },
 }
@@ -26,6 +27,13 @@ pub fn Lobby() -> Html {
         let my_color_ref = my_color_ref.clone();
         use_effect_with((), move |_| {
             log::info!("Effect running - attempting to connect");
+
+            let on_open = {
+                let state = state.clone();
+                Callback::from(move |_: ()| {
+                    state.set(LobbyState::SelectMode);
+                })
+            };
 
             let on_message = {
                 let state = state.clone();
@@ -67,7 +75,7 @@ pub fn Lobby() -> Html {
                 })
             };
 
-            match GameSocket::connect(on_message) {
+            match GameSocket::connect(on_open, on_message) {
                 Ok(gs) => {
                     log::info!("GameSocket created successfully");
                     socket.set(Some(Rc::new(gs)));
@@ -85,6 +93,61 @@ pub fn Lobby() -> Html {
                 <h2>{"Connecting..."}</h2>
             </div>
         },
+        LobbyState::SelectMode => {
+            let play_human = {
+                let socket = socket.clone();
+                Callback::from(move |_: MouseEvent| {
+                    if let Some(gs) = socket.as_ref() {
+                        gs.send(ClientMessage::JoinGame);
+                    }
+                })
+            };
+
+            let play_ai_easy = {
+                let socket = socket.clone();
+                Callback::from(move |_: MouseEvent| {
+                    if let Some(gs) = socket.as_ref() {
+                        gs.send(ClientMessage::PlayVsAI {
+                            difficulty: AiDifficulty::Easy,
+                        });
+                    }
+                })
+            };
+
+            let play_ai_medium = {
+                let socket = socket.clone();
+                Callback::from(move |_: MouseEvent| {
+                    if let Some(gs) = socket.as_ref() {
+                        gs.send(ClientMessage::PlayVsAI {
+                            difficulty: AiDifficulty::Medium,
+                        });
+                    }
+                })
+            };
+
+            let play_ai_hard = {
+                let socket = socket.clone();
+                Callback::from(move |_: MouseEvent| {
+                    if let Some(gs) = socket.as_ref() {
+                        gs.send(ClientMessage::PlayVsAI {
+                            difficulty: AiDifficulty::Hard,
+                        });
+                    }
+                })
+            };
+
+            html! {
+                <div class="panel">
+                    <h2>{"Select Game Mode"}</h2>
+                    <div class="mode-buttons">
+                        <button class="mode-button" onclick={play_human}>{"Play vs Human"}</button>
+                        <button class="mode-button" onclick={play_ai_easy}>{"Play vs AI (Easy)"}</button>
+                        <button class="mode-button" onclick={play_ai_medium}>{"Play vs AI (Medium)"}</button>
+                        <button class="mode-button" onclick={play_ai_hard}>{"Play vs AI (Hard)"}</button>
+                    </div>
+                </div>
+            }
+        }
         LobbyState::WaitingForOpponent => html! {
             <div class="panel">
                 <h2>{"Waiting for opponent..."}</h2>

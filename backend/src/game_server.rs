@@ -1,7 +1,7 @@
 // backend/src/game_server.rs
 
 // dependencies
-use checkers_common::Game;
+use checkers_common::{AiPlayer, Game, Player};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::{RwLock, mpsc};
@@ -13,6 +13,8 @@ pub struct GameSession {
     pub game: Game,
     pub dark_player: Option<PlayerSender>,
     pub light_player: Option<PlayerSender>,
+    pub ai_opponent: Option<Box<dyn AiPlayer + Send + Sync>>,
+    pub ai_color: Option<Player>,
 }
 
 pub struct GameServer {

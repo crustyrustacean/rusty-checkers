@@ -12,7 +12,14 @@ pub struct GameSocket {
 }
 
 impl GameSocket {
-    pub fn connect(on_message: Callback<ServerMessage>) -> Result<Self, JsValue> {
+    /// Connect to the WebSocket server.
+    ///
+    /// `on_open` is called when the connection is established.
+    /// `on_message` is called for each server message received.
+    pub fn connect(
+        on_open: Callback<()>,
+        on_message: Callback<ServerMessage>,
+    ) -> Result<Self, JsValue> {
         let window =
             web_sys::window().ok_or_else(|| JsValue::from_str("No window object available"))?;
         let location = window.location();
@@ -29,14 +36,9 @@ impl GameSocket {
         log::info!("Connecting to WebSocket: {}", url);
         let ws = WebSocket::new(&url)?;
 
-        let ws_clone = ws.clone();
         let onopen_callback = Closure::<dyn FnMut()>::new(move || {
-            log::info!("WebSocket connected, sending JoinGame");
-            if let Ok(msg) = serde_json::to_string(&ClientMessage::JoinGame) {
-                let _ = ws_clone.send_with_str(&msg);
-            } else {
-                log::error!("Failed to serialize JoinGame");
-            }
+            log::info!("WebSocket connected");
+            on_open.emit(());
         });
         ws.set_onopen(Some(onopen_callback.as_ref().unchecked_ref()));
         onopen_callback.forget();

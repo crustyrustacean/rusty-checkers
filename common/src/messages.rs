@@ -5,14 +5,25 @@ use crate::game::Game;
 use crate::player::Player;
 use serde::{Deserialize, Serialize};
 
+/// Difficulty level for the AI opponent.
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+pub enum AiDifficulty {
+    Easy,
+    Medium,
+    Hard,
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum ClientMessage {
     JoinGame,
+    PlayVsAI {
+        difficulty: AiDifficulty,
+    },
     MakeMove {
         start: (usize, usize),
         end: (usize, usize),
     },
-    PlayAgain
+    PlayAgain,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
