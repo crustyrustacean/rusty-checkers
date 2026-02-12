@@ -62,6 +62,59 @@ rusty-checkers/
 | Backend  | `backend`  | Rama, Tokio       | HTTP server, WebSocket game sessions, static assets   |
 | Frontend | `frontend` | Yew               | Game UI compiled to WebAssembly                       |
 
+## The `BoardGame` Trait
+
+The central abstraction in the `common` crate is the `BoardGame` trait
+(`common/src/traits.rs`). It decouples the backend server and the AI system
+from the concrete `Game` struct so that all game manipulation flows through a
+common interface:
+
+```rust
+pub trait BoardGame: Send + Sync + Any {
+    fn apply_move(&mut self, start: (usize, usize), end: (usize, usize)) -> MoveResult;
+    fn get_valid_moves(&self, start: (usize, usize)) -> Vec<(usize, usize)>;
+    fn current_player(&self) -> Player;
+    fn winner(&self) -> Option<Player>;
+    fn to_json(&self) -> Value;
+    fn as_any(&self) -> &dyn Any;
+    fn box_clone(&self) -> Box<dyn BoardGame>;
+}
+```
+
+### Supertrait bounds
+
+| Bound  | Reason                                                        |
+|--------|---------------------------------------------------------------|
+| `Send + Sync` | Game sessions are shared across Tokio tasks behind `Arc<RwLock<…>>` |
+| `Any`  | Enables downcasting via `as_any()` for game-specific logic    |
+
+### How the trait is used
+
+The backend's `GameSession` stores the game as `Box<dyn BoardGame>`. The
+WebSocket handler calls only trait methods -- `apply_move()`,
+`current_player()`, `winner()`, and `to_json()` -- so it never depends on the
+concrete `Game` type.
+
+The `AiPlayer` trait follows the same pattern: its `select_move()` method
+receives `&dyn BoardGame`. `RandomAi` operates entirely through the trait
+interface (iterating squares with `get_valid_moves()`), while `MinimaxAi`
+downcasts via `as_any().downcast_ref::<Game>()` to access the
+checkers-specific evaluation heuristic. If the downcast fails, it returns
+`None`.
+
+### Design notes
+
+- **`apply_move()` flattens errors.** The concrete `Game::play_move()` returns
+  `Result<MoveResult, String>`, but the trait method maps the `Err` case into
+  `MoveResult::InvalidMove(String)`. This keeps the interface simple for callers
+  that only need to match on `MoveResult` variants.
+- **`to_json()` for type-erased serialization.** A trait object cannot be
+  `Serialize` directly, so `to_json()` returns a `serde_json::Value` that the
+  server broadcasts over WebSocket without knowing the concrete type.
+- **`box_clone()` for cloneable trait objects.** A blanket `Clone` impl on
+  `Box<dyn BoardGame>` delegates to `box_clone()`, allowing the minimax search
+  to clone game states during tree traversal.
+
 ## Game Modes
 
 - **Multiplayer** -- Two players connect via WebSocket. The first player creates a game
