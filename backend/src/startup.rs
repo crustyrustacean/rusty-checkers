@@ -64,6 +64,25 @@ impl Application {
         let assets_dir = std::env::var("ASSETS_DIR").unwrap_or_else(|_| "../public".to_string());
 
         let game_server = GameServer::new();
+
+        // Spawn background task to clean up stale tournaments every 5 minutes
+        {
+            let gs = game_server.clone();
+            tokio::spawn(async move {
+                let mut interval = tokio::time::interval(Duration::from_secs(300));
+                loop {
+                    interval.tick().await;
+                    let mut tournaments = gs.tournaments.write().await;
+                    let before = tournaments.len();
+                    tournaments.retain(|_code, tm| !tm.is_stale());
+                    let removed = before - tournaments.len();
+                    if removed > 0 {
+                        tracing::info!("Cleaned up {} stale tournament(s)", removed);
+                    }
+                }
+            });
+        }
+
         let gs = game_server.clone();
 
         Router::new_with_state(state)
