@@ -116,91 +116,38 @@ impl MinimaxAi {
         all_moves
     }
 
-    /// Apply a single move to a cloned game state, handling captures,
-    /// kinging, and multi-jumps. Returns the resulting game state.
+    /// Apply a move to a cloned game state, completing any multi-jump
+    /// chain greedily (picking the first available continuation).
+    /// Returns the resulting game state after the full turn.
     fn apply_move(game: &Game, start: (usize, usize), end: (usize, usize)) -> Game {
+        use crate::game::MoveResult;
+
         let mut game = game.clone();
 
-        let piece = game
-            .pieces
-            .iter()
-            .find(|p| p.row == start.0 && p.col == start.1)
-            .cloned();
-
-        let Some(piece) = piece else {
-            return game;
-        };
-
-        let was_jump = (end.0 as i32 - start.0 as i32).abs() == 2;
-        game.advance(&piece, end.0, end.1);
-
-        if was_jump {
-            let captured_row = (start.0 + end.0) / 2;
-            let captured_col = (start.1 + end.1) / 2;
-            game.capture(captured_row, captured_col);
-        }
-
-        // Handle kinging
-        let mut just_kinged = false;
-        if let Some(p) = game
-            .pieces
-            .iter_mut()
-            .find(|p| p.row == end.0 && p.col == end.1)
-            && ((p.row == 0 && p.owner == Player::Light) || (p.row == 7 && p.owner == Player::Dark))
-            && !p.is_kinged
-        {
-            p.is_kinged = true;
-            just_kinged = true;
-        }
-
-        // Handle multi-jump
-        if was_jump && !just_kinged {
-            let can_jump_again = game
-                .pieces
-                .iter()
-                .find(|p| p.row == end.0 && p.col == end.1)
-                .map(|p| game.has_available_jumps(p))
-                .unwrap_or(false);
-
-            if can_jump_again {
-                // Continue jumping: pick the best continuation
-                let piece = game
-                    .pieces
-                    .iter()
-                    .find(|p| p.row == end.0 && p.col == end.1)
-                    .cloned()
-                    .expect("piece must exist after advance");
-
-                let jump_moves: Vec<(usize, usize)> = game
-                    .valid_moves(&piece)
-                    .into_iter()
-                    .filter(|(r, _)| (*r as i32 - piece.row as i32).abs() == 2)
-                    .collect();
-
+        match game.play_move(start, end) {
+            Ok(MoveResult::ContinueJump(row, col)) => {
+                // Greedily continue the multi-jump chain
+                let jump_moves = Self::collect_jump_moves(&game, (row, col));
                 if let Some(&next_dest) = jump_moves.first() {
-                    return Self::apply_move(&game, (end.0, end.1), next_dest);
+                    return Self::apply_move(&game, (row, col), next_dest);
                 }
+                // No continuation found (shouldn't happen), return as-is
+                game
             }
+            Ok(MoveResult::TurnComplete) | Ok(MoveResult::GameWon(_)) => game,
+            Err(_) => game, // Invalid move — return unchanged state
         }
+    }
 
-        game.switch_turn();
-
-        // Check for winner
-        let current = game.current_player.clone();
-        let has_moves = game
-            .pieces
-            .iter()
-            .filter(|p| p.owner == current)
-            .any(|p| !game.valid_moves(p).is_empty());
-
-        if !has_moves {
-            game.winner = Some(match current {
-                Player::Dark => Player::Light,
-                Player::Light => Player::Dark,
-            });
-        }
-
-        game
+    /// Collect only jump destinations for a piece at the given position.
+    fn collect_jump_moves(game: &Game, pos: (usize, usize)) -> Vec<(usize, usize)> {
+        let Some(piece) = game.pieces.iter().find(|p| p.row == pos.0 && p.col == pos.1) else {
+            return Vec::new();
+        };
+        game.valid_moves(piece)
+            .into_iter()
+            .filter(|(r, _)| (*r as i32 - pos.0 as i32).abs() == 2)
+            .collect()
     }
 
     /// Minimax with alpha-beta pruning.
@@ -314,6 +261,7 @@ mod tests {
             captured_pieces: vec![],
             current_player: current,
             winner: None,
+            must_jump_from: None,
         }
     }
 
