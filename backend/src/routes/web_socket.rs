@@ -65,7 +65,15 @@ pub async fn game_handler(
                             }
                             Ok(ClientMessage::MakeMove { start, end }) => {
                                 tracing::info!("MakeMove: {:?} -> {:?}", start, end);
-                                if let (Some(gid), Some(player)) = (&conn.game_id, &conn.player) {
+                                if let (Some(code), Some(pid)) = (&conn.tournament_code, conn.tournament_player_id) {
+                                    // Tournament mode: resolve game from tournament state each time
+                                    // (game_id changes between rounds)
+                                    if let Some((gid, player)) = resolve_tournament_game(code, pid, &game_server).await {
+                                        handle_make_move(&gid, &player, start, end, &tx, &game_server).await;
+                                    } else {
+                                        send_error(&tx, "No active tournament match");
+                                    }
+                                } else if let (Some(gid), Some(player)) = (&conn.game_id, &conn.player) {
                                     handle_make_move(gid, player, start, end, &tx, &game_server).await;
                                 } else {
                                     send_error(&tx, "Not in a game");
@@ -120,6 +128,27 @@ pub async fn game_handler(
 }
 
 // --- Helper ---
+
+/// Resolve the active game_id and player color for a tournament participant.
+///
+/// Called on every MakeMove from a tournament player rather than caching, since
+/// the game_id changes between tournament rounds.
+async fn resolve_tournament_game(
+    code: &str,
+    player_id: Uuid,
+    game_server: &Arc<GameServer>,
+) -> Option<(GameId, Player)> {
+    let tournaments = game_server.tournaments.read().await;
+    let tm = tournaments.get(code)?;
+    let active_match = tm.find_active_match_for_player(player_id)?;
+    let game_id = active_match.game_id.clone()?;
+    let player = if active_match.player1_id == Some(player_id) {
+        Player::Dark
+    } else {
+        Player::Light
+    };
+    Some((game_id, player))
+}
 
 fn send_error(tx: &PlayerSender, msg: &str) {
     let _ = tx.send(serde_json::to_string(&ServerMessage::Error(msg.into())).unwrap());
