@@ -9,6 +9,7 @@ pub mod routes;
 pub mod startup;
 pub mod state;
 pub mod telemetry;
+pub mod tournament;
 
 // re-exports
 pub use config::*;

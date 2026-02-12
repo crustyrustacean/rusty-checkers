@@ -1,8 +1,9 @@
 // frontend/src/components/lobby.rs
 
 // dependencies
-use crate::components::{MpGrid, RulesCard};
+use crate::components::{BracketView, MpGrid, RulesCard, TournamentLogin};
 use crate::websocket::GameSocket;
+use checkers_common::tournament::TournamentView;
 use checkers_common::{AiDifficulty, ClientMessage, Game, Player, ServerMessage};
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -11,8 +12,22 @@ use yew::prelude::*;
 pub enum LobbyState {
     Connecting,
     SelectMode,
+    TournamentLogin,
+    TournamentLobby {
+        view: TournamentView,
+        is_host: bool,
+    },
+    TournamentBracket {
+        view: TournamentView,
+        is_host: bool,
+    },
     WaitingForOpponent,
-    Playing { my_color: Player, game: Game },
+    Playing {
+        my_color: Player,
+        game: Game,
+        tournament_view: Option<TournamentView>,
+        is_tournament: bool,
+    },
 }
 
 #[component]
@@ -20,11 +35,17 @@ pub fn Lobby() -> Html {
     let state = use_state(|| LobbyState::Connecting);
     let socket: UseStateHandle<Option<Rc<GameSocket>>> = use_state(|| None);
     let my_color_ref = use_memo((), |_| RefCell::new(None::<Player>));
+    let is_host_ref = use_memo((), |_| RefCell::new(false));
+    let tournament_view_ref = use_memo((), |_| RefCell::new(None::<TournamentView>));
+    let in_tournament_ref = use_memo((), |_| RefCell::new(false));
 
     {
         let state = state.clone();
         let socket = socket.clone();
         let my_color_ref = my_color_ref.clone();
+        let is_host_ref = is_host_ref.clone();
+        let tournament_view_ref = tournament_view_ref.clone();
+        let in_tournament_ref = in_tournament_ref.clone();
         use_effect_with((), move |_| {
             log::info!("Effect running - attempting to connect");
 
@@ -38,6 +59,9 @@ pub fn Lobby() -> Html {
             let on_message = {
                 let state = state.clone();
                 let my_color_ref = my_color_ref.clone();
+                let is_host_ref = is_host_ref.clone();
+                let tournament_view_ref = tournament_view_ref.clone();
+                let in_tournament_ref = in_tournament_ref.clone();
                 Callback::from(move |msg: ServerMessage| {
                     log::info!("Received: {:?}", msg);
                     match msg {
@@ -47,9 +71,12 @@ pub fn Lobby() -> Html {
                         ServerMessage::GameStarted(player) => {
                             log::info!("Game started! I am {:?}", player);
                             *my_color_ref.borrow_mut() = Some(player.clone());
+                            let is_tournament = *in_tournament_ref.borrow();
                             state.set(LobbyState::Playing {
                                 my_color: player,
                                 game: Game::new(),
+                                tournament_view: tournament_view_ref.borrow().clone(),
+                                is_tournament,
                             });
                         }
                         ServerMessage::GameState(json_value) => {
@@ -58,9 +85,12 @@ pub fn Lobby() -> Html {
                                     let color = my_color_ref.borrow().clone();
                                     log::info!("GameState received & parsed. Color: {:?}", color);
                                     if let Some(color) = color {
+                                        let is_tournament = *in_tournament_ref.borrow();
                                         state.set(LobbyState::Playing {
                                             my_color: color,
                                             game,
+                                            tournament_view: tournament_view_ref.borrow().clone(),
+                                            is_tournament,
                                         });
                                     } else {
                                         log::warn!("GameState received but no color set yet");
@@ -76,6 +106,48 @@ pub fn Lobby() -> Html {
                         }
                         ServerMessage::Error(e) => {
                             log::error!("Server error: {}", e);
+                        }
+                        ServerMessage::TournamentCreated { code } => {
+                            log::info!("Tournament created: {}", code);
+                            *is_host_ref.borrow_mut() = true;
+                            *in_tournament_ref.borrow_mut() = true;
+                        }
+                        ServerMessage::TournamentUpdate(view) => {
+                            log::info!("Tournament update: {:?}", view.state);
+                            *tournament_view_ref.borrow_mut() = Some(view.clone());
+                            let is_host = *is_host_ref.borrow();
+
+                            match view.state {
+                                checkers_common::tournament::TournamentState::Lobby => {
+                                    state.set(LobbyState::TournamentLobby {
+                                        view,
+                                        is_host,
+                                    });
+                                }
+                                checkers_common::tournament::TournamentState::InProgress
+                                | checkers_common::tournament::TournamentState::Finished => {
+                                    // Only switch to bracket if we're not currently playing
+                                    let color = my_color_ref.borrow().clone();
+                                    if color.is_none() {
+                                        state.set(LobbyState::TournamentBracket {
+                                            view,
+                                            is_host,
+                                        });
+                                    }
+                                    // If we have a color, we're in a game - the state
+                                    // will be updated when the game ends
+                                }
+                            }
+                        }
+                        ServerMessage::MatchStart { game_id, opponent_name } => {
+                            log::info!(
+                                "Match starting! game_id: {}, opponent: {}",
+                                game_id,
+                                opponent_name
+                            );
+                            *in_tournament_ref.borrow_mut() = true;
+                            // The GameStarted message that follows will
+                            // transition us to Playing state
                         }
                     }
                 })
@@ -142,6 +214,13 @@ pub fn Lobby() -> Html {
                 })
             };
 
+            let open_tournament = {
+                let state = state.clone();
+                Callback::from(move |_: MouseEvent| {
+                    state.set(LobbyState::TournamentLogin);
+                })
+            };
+
             html! {
                 <div class="panel">
                     <h2>{"Select Game Mode"}</h2>
@@ -150,8 +229,62 @@ pub fn Lobby() -> Html {
                         <button class="mode-button" onclick={play_ai_easy}>{"Play vs AI (Easy)"}</button>
                         <button class="mode-button" onclick={play_ai_medium}>{"Play vs AI (Medium)"}</button>
                         <button class="mode-button" onclick={play_ai_hard}>{"Play vs AI (Hard)"}</button>
+                        <button class="mode-button tournament-btn" onclick={open_tournament}>{"Tournament"}</button>
                     </div>
                 </div>
+            }
+        }
+        LobbyState::TournamentLogin => {
+            let on_create = {
+                let socket = socket.clone();
+                Callback::from(move |name: String| {
+                    if let Some(gs) = socket.as_ref() {
+                        gs.send(ClientMessage::CreateTournament { host_name: name });
+                    }
+                })
+            };
+
+            let on_join = {
+                let socket = socket.clone();
+                Callback::from(move |(code, name): (String, String)| {
+                    if let Some(gs) = socket.as_ref() {
+                        gs.send(ClientMessage::JoinTournament { code, name });
+                    }
+                })
+            };
+
+            let on_back = {
+                let state = state.clone();
+                Callback::from(move |_: MouseEvent| {
+                    state.set(LobbyState::SelectMode);
+                })
+            };
+
+            html! {
+                <TournamentLogin {on_create} {on_join} {on_back} />
+            }
+        }
+        LobbyState::TournamentLobby { view, is_host } => {
+            let on_start = {
+                let socket = socket.clone();
+                Callback::from(move |_: MouseEvent| {
+                    if let Some(gs) = socket.as_ref() {
+                        gs.send(ClientMessage::StartTournament);
+                    }
+                })
+            };
+
+            html! {
+                <BracketView view={view.clone()} is_host={*is_host} {on_start} />
+            }
+        }
+        LobbyState::TournamentBracket { view, is_host } => {
+            let on_start = {
+                Callback::from(|_: MouseEvent| {})
+            };
+
+            html! {
+                <BracketView view={view.clone()} is_host={*is_host} {on_start} />
             }
         }
         LobbyState::WaitingForOpponent => html! {
@@ -159,7 +292,12 @@ pub fn Lobby() -> Html {
                 <h2>{"Waiting for opponent..."}</h2>
             </div>
         },
-        LobbyState::Playing { my_color, game } => {
+        LobbyState::Playing {
+            my_color,
+            game,
+            tournament_view,
+            is_tournament,
+        } => {
             let on_move = {
                 let socket = socket.clone();
                 Callback::from(move |(start, end): ((usize, usize), (usize, usize))| {
@@ -182,6 +320,23 @@ pub fn Lobby() -> Html {
                 })
             };
 
+            let back_to_bracket = {
+                let state = state.clone();
+                let tv = tournament_view.clone();
+                let is_host = *is_tournament;
+                let my_color_ref = my_color_ref.clone();
+                Callback::from(move |_: MouseEvent| {
+                    // Clear color so we re-enter bracket view
+                    *my_color_ref.borrow_mut() = None;
+                    if let Some(view) = &tv {
+                        state.set(LobbyState::TournamentBracket {
+                            view: view.clone(),
+                            is_host,
+                        });
+                    }
+                })
+            };
+
             let winner_text = if game.winner.as_ref() == Some(my_color) {
                 "You win!"
             } else {
@@ -198,7 +353,11 @@ pub fn Lobby() -> Html {
                             <div class="winner-banner">
                                 <h2>{winner_text}</h2>
                                 <p>{format!("{:?} wins the game", game.winner.as_ref().unwrap())}</p>
-                                <button onclick={play_again}>{"Play Again"}</button>
+                                if *is_tournament {
+                                    <button onclick={back_to_bracket}>{"Back to Bracket"}</button>
+                                } else {
+                                    <button onclick={play_again}>{"Play Again"}</button>
+                                }
                             </div>
                         } else {
                             <div class="panel">
