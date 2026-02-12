@@ -5,8 +5,10 @@ A modern, networked take on the classic Checkers, written front to back in Rust!
 ## Overview
 
 Rusty Checkers is a full-stack checkers game with a Rust backend serving a WebAssembly
-frontend. The game implements standard American checkers rules on an 8x8 board,
-including forced captures, multi-jump sequences, and king promotion.
+frontend over WebSockets. The game implements standard American checkers rules on an 8x8
+board, including forced captures, multi-jump sequences, and king promotion. It supports
+real-time multiplayer (human vs human) and single-player modes against AI opponents of
+varying difficulty.
 
 ## Architecture
 
@@ -14,14 +16,19 @@ including forced captures, multi-jump sequences, and king promotion.
 rusty-checkers/
 ├── common/           # Shared game domain library
 │   └── src/
-│       ├── lib.rs     # Public API (re-exports Game, GamePiece, Player)
-│       ├── game.rs    # Game struct and core checkers logic
-│       ├── piece.rs   # GamePiece struct
-│       └── player.rs  # Player enum
-├── backend/          # HTTP server (Rama + Tokio)
+│       ├── lib.rs         # Public API and module re-exports
+│       ├── game.rs        # Game struct and core checkers logic
+│       ├── piece.rs       # GamePiece struct
+│       ├── player.rs      # Player enum (Dark / Light)
+│       ├── ai.rs          # AI opponents (RandomAi, MinimaxAi)
+│       ├── messages.rs    # Client/server message types
+│       ├── traits.rs      # BoardGame trait abstraction
+│       └── game_tests.rs  # Unit tests for game logic
+├── backend/          # HTTP + WebSocket server (Rama + Tokio)
 │   ├── src/
-│   │   ├── bin/      # Server entry point
-│   │   ├── routes/   # API endpoints
+│   │   ├── bin/           # Server entry point
+│   │   ├── routes/        # API endpoints (health check, WebSocket)
+│   │   ├── game_server.rs # Game session management
 │   │   ├── config.rs
 │   │   ├── errors.rs
 │   │   ├── response.rs
@@ -30,28 +37,38 @@ rusty-checkers/
 │   │   └── telemetry.rs
 │   ├── tests/        # Integration tests
 │   └── config/       # Environment-specific YAML configs
-├── frontend/         # WASM client (Yew + Yewdux)
+├── frontend/         # WASM client (Yew)
 │   ├── src/
-│   │   ├── bin/      # WASM entry point
+│   │   ├── bin/           # WASM entry point
+│   │   ├── app.rs         # Main app component and routing
+│   │   ├── websocket.rs   # WebSocket client
 │   │   ├── components/
-│   │   │   ├── grid.rs           # Board canvas and click handling
-│   │   │   ├── game_status.rs    # Game over display
-│   │   │   ├── turn_indicator.rs # Current turn display
-│   │   │   └── reset_button.rs   # New game button
-│   │   ├── views/
-│   │   │   └── game_view.rs      # Main game layout
-│   │   └── state.rs   # Application state
+│   │   │   ├── landing.rs     # Landing page with crab logo
+│   │   │   ├── lobby.rs       # Game mode selection
+│   │   │   ├── mp_grid.rs     # 8x8 board canvas and click handling
+│   │   │   ├── rules_card.rs  # Game rules display
+│   │   │   └── reset_button.rs # New game button
+│   │   └── views/
+│   │       └── game_view.rs   # Main game layout
 │   └── index.html
 ├── Dockerfile         # Multi-stage production build
 ├── fly.toml           # Fly.io deployment config
 └── justfile           # Task runner recipes
 ```
 
-| Layer    | Crate      | Framework         | Role                                          |
-|----------|------------|-------------------|------------------------------------------------|
-| Common   | `common`   | —                 | Shared game domain types and core checkers logic |
-| Backend  | `backend`  | Rama, Tokio       | Serves static assets and health check API      |
-| Frontend | `frontend` | Yew, Yewdux       | Game UI, compiled to WebAssembly               |
+| Layer    | Crate      | Framework         | Role                                                  |
+|----------|------------|-------------------|-------------------------------------------------------|
+| Common   | `common`   | ---               | Shared game types, rules engine, AI, and message protocol |
+| Backend  | `backend`  | Rama, Tokio       | HTTP server, WebSocket game sessions, static assets   |
+| Frontend | `frontend` | Yew               | Game UI compiled to WebAssembly                       |
+
+## Game Modes
+
+- **Multiplayer** -- Two players connect via WebSocket. The first player creates a game
+  and waits; the second player is matched in. Turns alternate in real time.
+- **vs AI (Easy)** -- Play against a random-move AI.
+- **vs AI (Medium)** -- Play against a minimax AI with alpha-beta pruning (depth 4).
+- **vs AI (Hard)** -- Play against a minimax AI with alpha-beta pruning (depth 6).
 
 ## Game Rules
 
@@ -131,10 +148,10 @@ cargo test
 
 The test suite includes:
 
-- **Common unit tests** (`common/src/game.rs`) — move validation and board state
-  logic
-- **Backend integration tests** (`backend/tests/api/`) — health check endpoint
-  verification
+- **Common unit tests** (`common/src/game_tests.rs`) -- move validation, captures,
+  blocked-piece detection, and message serialization
+- **Backend integration tests** (`backend/tests/api/`) -- health check and WebSocket
+  endpoint verification
 
 ## Docker
 
@@ -149,10 +166,10 @@ The Dockerfile uses a multi-stage build with
 [cargo-chef](https://github.com/LukeMathWalker/cargo-chef) for dependency
 caching:
 
-1. **Planner** — generates a dependency recipe for layer caching
-2. **Frontend builder** — compiles the Yew app to WASM via Trunk
-3. **Backend builder** — compiles the server binary with cached dependencies
-4. **Runtime** — minimal Debian Slim image with the server binary and static assets
+1. **Planner** -- generates a dependency recipe for layer caching
+2. **Frontend builder** -- compiles the Yew app to WASM via Trunk
+3. **Backend builder** -- compiles the server binary with cached dependencies
+4. **Runtime** -- minimal Debian Slim image with the server binary and static assets
 
 ## Deployment
 
@@ -185,22 +202,32 @@ static assets path.
 ### Common
 
 The `common` crate (`checkers_common`) is the shared game domain library. It
-contains the core types and logic for the checkers game and has **no external
-dependencies**, keeping it lightweight and portable across both native and WASM
-targets.
+contains the core types, rules engine, AI opponents, and network message
+protocol for the checkers game.
 
-It exports three types:
+Key exports:
 
-| Type        | Purpose                                        |
-|-------------|------------------------------------------------|
-| `Game`      | Board state, move validation, captures, turns  |
-| `GamePiece` | Individual piece with position and king status |
-| `Player`    | Dark / Light player enum                       |
+| Type / Trait    | Purpose                                        |
+|-----------------|-------------------------------------------------|
+| `Game`          | Board state, move validation, captures, turns   |
+| `GamePiece`     | Individual piece with position and king status   |
+| `Player`        | Dark / Light player enum                         |
+| `MoveResult`    | Outcome of a move (TurnComplete, ContinueJump, GameWon, InvalidMove) |
+| `BoardGame`     | Trait abstraction over board game implementations |
+| `AiPlayer`      | Trait for AI move selection                      |
+| `RandomAi`      | Random move AI (Easy)                            |
+| `MinimaxAi`     | Alpha-beta pruning minimax AI (Medium / Hard)    |
+| `ClientMessage`  | Messages sent from client to server             |
+| `ServerMessage`  | Messages sent from server to client             |
+
+Dependencies: `serde` / `serde_json` (serialization), `rand` (random move
+selection), `getrandom` (WASM-compatible randomness).
 
 ### Backend
 
 | Crate                       | Purpose                         |
 |-----------------------------|---------------------------------|
+| `common`                    | Shared game domain types and logic |
 | `rama`                      | HTTP server framework           |
 | `tokio`                     | Async runtime                   |
 | `serde` / `serde-aux`      | Serialization                   |
@@ -214,9 +241,8 @@ It exports three types:
 
 | Crate                         | Purpose                           |
 |-------------------------------|-----------------------------------|
-| `checkers_common`             | Shared game domain types and logic |
+| `common`                      | Shared game domain types and logic |
 | `yew`                         | Component-based UI framework      |
-| `yewdux`                      | Global state management           |
 | `web-sys`                     | Web API bindings (Canvas, DOM)    |
 | `wasm-bindgen`                | Rust/JS interop                   |
 | `gloo-net`                    | HTTP requests from WASM           |
