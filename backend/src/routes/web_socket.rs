@@ -54,11 +54,7 @@ pub async fn game_handler(
                             Ok(ClientMessage::MakeMove { start, end }) => {
                                 tracing::info!("MakeMove: {:?} -> {:?}", start, end);
                                 if let (Some(gid), Some(player)) = (&my_game_id, &my_player) {
-                                    // Use the user's player ID to verify they are allowed to move
-                                    // Note: We don't pass 'player' to play_move directly because Game checks 'current_player' internally.
-                                    // However, we must ensure the WebSocket user matches the current turn player.
-                                    // Actually, simpler: play_move checks 'current_player', we just need to know if 'player' == 'current_player'
-                                    // But handle_make_move will verify that via the Game logic now.
+                                    // play_move() validates piece ownership and move legality internally.
                                     handle_make_move(gid, player, start, end, &tx, &game_server).await;
                                 } else {
                                     let _ = tx.send(serde_json::to_string(&ServerMessage::Error("Not in a game".into())).unwrap());
@@ -194,11 +190,9 @@ async fn handle_play_vs_ai(
     Some((game_id, Player::Dark))
 }
 
-// backend/src/routes/web_socket.rs
-
 async fn handle_make_move(
     game_id: &GameId,
-    player: &Player,
+    _player: &Player,
     start: (usize, usize),
     end: (usize, usize),
     tx: &PlayerSender,
@@ -211,22 +205,10 @@ async fn handle_make_move(
         return;
     };
 
-    if session.game.current_player != *player {
-        let _ =
-            tx.send(serde_json::to_string(&ServerMessage::Error("Not your turn".into())).unwrap());
-        return;
-    }
-
     match session.game.play_move(start, end) {
         Ok(result) => {
-            // Check if the move was actually invalid (if play_move returns Ok(InvalidMove))
-            if let MoveResult::InvalidMove(reason) = &result {
-                let _ =
-                    tx.send(serde_json::to_string(&ServerMessage::Error(reason.clone())).unwrap());
-                return;
-            }
+            // Broadcast updated state after every successful move
 
-            // If valid, broadcast state
             broadcast_game_state(session);
 
             // Handle AI Turn if the human's turn is complete
@@ -256,11 +238,6 @@ async fn handle_make_move(
                                         MoveResult::TurnComplete => break,
                                         MoveResult::ContinueJump(_, _) => continue,
                                         MoveResult::GameWon(_) => break,
-                                        // FIX: Handle the InvalidMove variant
-                                        MoveResult::InvalidMove(e) => {
-                                            tracing::error!("AI attempted invalid move: {}", e);
-                                            break;
-                                        }
                                     }
                                 }
                                 Err(e) => {
