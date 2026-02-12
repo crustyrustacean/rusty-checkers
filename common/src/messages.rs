@@ -1,7 +1,6 @@
 // common/src/messages.rs
 
 // dependencies
-use crate::game::Game;
 use crate::player::Player;
 use serde::{Deserialize, Serialize};
 
@@ -30,7 +29,7 @@ pub enum ClientMessage {
 pub enum ServerMessage {
     GamePending,
     GameStarted(Player),
-    GameState(Game),
+    GameState(serde_json::Value),
     OpponentDisconnected,
     Error(String),
 }

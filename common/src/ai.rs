@@ -6,6 +6,7 @@
 
 use crate::game::Game;
 use crate::player::Player;
+use crate::traits::BoardGame;
 use rand::seq::SliceRandom;
 
 /// Trait for AI players that can select a move given a game state.
@@ -14,26 +15,26 @@ pub trait AiPlayer {
     ///
     /// Returns `Some((start, end))` with the source and destination coordinates,
     /// or `None` if no legal moves exist.
-    fn select_move(&self, game: &Game, color: &Player) -> Option<((usize, usize), (usize, usize))>;
+    fn select_move(&self, game: &dyn BoardGame, color: &Player) -> Option<((usize, usize), (usize, usize))>;
 }
 
 /// An AI that picks a random legal move each turn.
 pub struct RandomAi;
 
 impl AiPlayer for RandomAi {
-    fn select_move(&self, game: &Game, color: &Player) -> Option<((usize, usize), (usize, usize))> {
-        let captures_exist = game.check_captures_moves(color);
-
-        let mut all_moves: Vec<((usize, usize), (usize, usize))> = Vec::new();
-
-        for piece in game.pieces.iter().filter(|p| p.owner == *color) {
-            let moves = game.valid_moves(piece);
-            for dest in moves {
-                let is_capture = (dest.0 as i32 - piece.row as i32).abs() == 2;
-                if captures_exist && !is_capture {
-                    continue;
+    fn select_move(&self, game: &dyn BoardGame, _color: &Player) -> Option<((usize, usize), (usize, usize))> {
+        // Generic implementation: Iterate all board squares (0..8)
+        // This works for ANY grid game!
+        let mut all_moves = Vec::new();
+        
+        for r in 0..8 {
+            for c in 0..8 {
+                let moves = game.get_valid_moves((r, c));
+                for dest in moves {
+                    // Note: We can't easily check 'forced captures' here without 
+                    // extra trait methods, but Game::apply_move will reject invalid ones anyway.
+                    all_moves.push(((r, c), dest));
                 }
-                all_moves.push(((piece.row, piece.col), dest));
             }
         }
 
@@ -218,13 +219,20 @@ impl MinimaxAi {
 }
 
 impl AiPlayer for MinimaxAi {
-    fn select_move(&self, game: &Game, color: &Player) -> Option<((usize, usize), (usize, usize))> {
+    fn select_move(&self, game: &dyn BoardGame, color: &Player) -> Option<((usize, usize), (usize, usize))> {
+        // Downcast: We are a Checkers AI, so we require a Checkers board.
+        // If the game is NOT Checkers, this AI simply returns None.
+        let game = game.as_any().downcast_ref::<Game>()?;
+        
+        // ... Original Minimax Logic ...
+        // Re-use the existing private methods which take &Game
         let moves = Self::collect_moves(game, color);
-
+        
         if moves.is_empty() {
-            return None;
+             return None;
         }
-
+        
+        // (Copy the rest of your original select_move logic here)
         let mut best_move = None;
         let mut best_score = i32::MIN;
 

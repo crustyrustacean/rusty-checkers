@@ -52,17 +52,23 @@ pub fn Lobby() -> Html {
                                 game: Game::new(),
                             });
                         }
-                        ServerMessage::GameState(game) => {
-                            let color = my_color_ref.borrow().clone();
-                            log::info!("GameState received, my_color_ref: {:?}", color);
-                            if let Some(color) = color {
-                                log::info!("Updating game state with color: {:?}", color);
-                                state.set(LobbyState::Playing {
-                                    my_color: color,
-                                    game,
-                                });
-                            } else {
-                                log::warn!("GameState received but no color set yet");
+                        ServerMessage::GameState(json_value) => {
+                            match serde_json::from_value::<Game>(json_value) {
+                                Ok(game) => {
+                                    let color = my_color_ref.borrow().clone();
+                                    log::info!("GameState received & parsed. Color: {:?}", color);
+                                    if let Some(color) = color {
+                                        state.set(LobbyState::Playing {
+                                            my_color: color,
+                                            game,
+                                        });
+                                    } else {
+                                        log::warn!("GameState received but no color set yet");
+                                    }
+                                }
+                                Err(e) => {
+                                    log::error!("Failed to parse GameState JSON: {}", e);
+                                }
                             }
                         }
                         ServerMessage::OpponentDisconnected => {

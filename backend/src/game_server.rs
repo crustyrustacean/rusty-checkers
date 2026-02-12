@@ -1,7 +1,7 @@
 // backend/src/game_server.rs
 
 // dependencies
-use checkers_common::{AiPlayer, Game, Player};
+use checkers_common::{AiPlayer, BoardGame, Player};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::{RwLock, mpsc};
@@ -10,7 +10,7 @@ pub type GameId = String;
 pub type PlayerSender = mpsc::UnboundedSender<String>;
 
 pub struct GameSession {
-    pub game: Game,
+    pub game: Box<dyn BoardGame>,
     pub dark_player: Option<PlayerSender>,
     pub light_player: Option<PlayerSender>,
     pub ai_opponent: Option<Box<dyn AiPlayer + Send + Sync>>,

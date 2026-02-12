@@ -6,6 +6,7 @@ use crate::Player;
 use crate::traits::BoardGame;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::any::Any;
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Game {
@@ -253,8 +254,31 @@ impl BoardGame for Game {
     }
 
     fn get_valid_moves(&self, start: (usize, usize)) -> Vec<(usize, usize)> {
+        if let Some(required) = self.must_jump_from {
+            if start != required {
+                return vec![];
+            }
+        }
+
         if let Some(piece) = self.pieces.iter().find(|p| p.row == start.0 && p.col == start.1) {
-            self.valid_moves(piece)
+            let moves = self.valid_moves(piece);
+
+            if moves.is_empty() {
+                return vec![];
+            }
+
+            let captures_exist = self.check_captures_moves(&piece.owner);
+
+            if captures_exist {
+                
+                moves
+                    .into_iter()
+                    .filter(|(r, _)| (*r as i32 - piece.row as i32).abs() == 2)
+                    .collect()
+            } else {
+                
+                moves
+            }
         } else {
             vec![]
         }
@@ -272,7 +296,15 @@ impl BoardGame for Game {
         serde_json::to_value(self).unwrap_or(Value::Null)
     }
 
+    fn as_any(&self) -> &dyn Any {
+        self
     }
+
+    fn box_clone(&self) -> Box<dyn BoardGame> {
+        Box::new(self.clone())
+    }
+
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum MoveResult {
