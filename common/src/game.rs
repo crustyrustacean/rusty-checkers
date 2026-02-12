@@ -3,7 +3,9 @@
 // dependencies
 use crate::GamePiece;
 use crate::Player;
+use crate::traits::BoardGame;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Game {
@@ -242,11 +244,42 @@ impl Default for Game {
     }
 }
 
+impl BoardGame for Game {
+    fn apply_move(&mut self, start: (usize, usize), end: (usize, usize)) -> MoveResult {
+        match self.play_move(start, end) {
+            Ok(result) => result,
+            Err(reason) => MoveResult::InvalidMove(reason),
+        }
+    }
+
+    fn get_valid_moves(&self, start: (usize, usize)) -> Vec<(usize, usize)> {
+        if let Some(piece) = self.pieces.iter().find(|p| p.row == start.0 && p.col == start.1) {
+            self.valid_moves(piece)
+        } else {
+            vec![]
+        }
+    }
+
+    fn current_player(&self) -> Player {
+        self.current_player.clone()
+    }
+
+    fn winner(&self) -> Option<Player> {
+        self.winner.clone()
+    }
+
+    fn to_json(&self) -> Value {
+        serde_json::to_value(self).unwrap_or(Value::Null)
+    }
+
+    }
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum MoveResult {
     TurnComplete,
     ContinueJump(usize, usize),
     GameWon(Player),
+    InvalidMove(String),
 }
 
 #[cfg(test)]

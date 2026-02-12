@@ -238,6 +238,10 @@ async fn handle_make_move(
                                         MoveResult::TurnComplete => break,
                                         MoveResult::ContinueJump(_, _) => continue,
                                         MoveResult::GameWon(_) => break,
+                                        MoveResult::InvalidMove(e) => {
+                                            tracing::error!("AI attempted invalid move: {}", e);
+                                            break;
+                                        }
                                     }
                                 }
                                 Err(e) => {

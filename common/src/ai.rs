@@ -135,6 +135,7 @@ impl MinimaxAi {
                 game
             }
             Ok(MoveResult::TurnComplete) | Ok(MoveResult::GameWon(_)) => game,
+            Ok(MoveResult::InvalidMove(_)) => game,
             Err(_) => game, // Invalid move — return unchanged state
         }
     }
