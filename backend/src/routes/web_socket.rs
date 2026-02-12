@@ -214,6 +214,9 @@ async fn handle_play_vs_ai(
         tournament_code: None,
     };
 
+    // Capture initial state before moving session into the map
+    let initial_state = session.game.to_json();
+
     game_server
         .games
         .write()
@@ -221,13 +224,7 @@ async fn handle_play_vs_ai(
         .insert(game_id.clone(), session);
 
     let _ = tx.send(serde_json::to_string(&ServerMessage::GameStarted(Player::Dark)).unwrap());
-
-    let games = game_server.games.read().await;
-    if let Some(session) = games.get(&game_id) {
-        let game_state =
-            serde_json::to_string(&ServerMessage::GameState(session.game.to_json())).unwrap();
-        let _ = tx.send(game_state);
-    }
+    let _ = tx.send(serde_json::to_string(&ServerMessage::GameState(initial_state)).unwrap());
 
     Some((game_id, Player::Dark))
 }
@@ -350,17 +347,27 @@ async fn handle_create_tournament(
     host_name: String,
     game_server: &Arc<GameServer>,
 ) -> Option<(TournamentCode, Uuid)> {
-    let code = generate_room_code();
-    tracing::info!("Creating tournament with code: {}", code);
-
-    let tm = TournamentManager::new(code.clone(), host_name);
+    let tm = TournamentManager::new(String::new(), host_name);
     let host_id = tm.host_id();
 
-    game_server
-        .tournaments
-        .write()
-        .await
-        .insert(code.clone(), tm);
+    // Insert with a unique room code (retry on collision)
+    let (code, view) = {
+        let mut tournaments = game_server.tournaments.write().await;
+        let code = loop {
+            let candidate = generate_room_code();
+            if !tournaments.contains_key(&candidate) {
+                break candidate;
+            }
+        };
+        let mut tm = tm;
+        // Set the code on the manager after generating it
+        tm.set_code(code.clone());
+        let view = tm.view();
+        tournaments.insert(code.clone(), tm);
+        (code, view)
+    };
+
+    tracing::info!("Creating tournament with code: {}", code);
 
     game_server.tournament_connections.write().await.insert(
         host_id,
@@ -372,12 +379,7 @@ async fn handle_create_tournament(
     );
 
     send_msg(&tx, &ServerMessage::TournamentCreated { code: code.clone() });
-
-    // Send initial tournament view
-    let tournaments = game_server.tournaments.read().await;
-    if let Some(tm) = tournaments.get(&code) {
-        send_msg(&tx, &ServerMessage::TournamentUpdate(tm.view()));
-    }
+    send_msg(&tx, &ServerMessage::TournamentUpdate(view));
 
     Some((code, host_id))
 }
@@ -389,22 +391,26 @@ async fn handle_join_tournament(
     game_server: &Arc<GameServer>,
 ) -> Option<(TournamentCode, Uuid)> {
     let code = code.to_uppercase();
-    let mut tournaments = game_server.tournaments.write().await;
 
-    let Some(tm) = tournaments.get_mut(&code) else {
-        send_error(&tx, "Tournament not found");
-        return None;
-    };
-
-    let player_id = match tm.add_player(name) {
-        Ok(id) => id,
-        Err(e) => {
-            send_error(&tx, &e);
+    // Scope the tournaments lock so it's released before acquiring tournament_connections
+    let (player_id, view) = {
+        let mut tournaments = game_server.tournaments.write().await;
+        let Some(tm) = tournaments.get_mut(&code) else {
+            send_error(&tx, "Tournament not found");
             return None;
-        }
-    };
+        };
 
-    tracing::info!("Player {} joined tournament {}", player_id, code);
+        let player_id = match tm.add_player(name) {
+            Ok(id) => id,
+            Err(e) => {
+                send_error(&tx, &e);
+                return None;
+            }
+        };
+
+        tracing::info!("Player {} joined tournament {}", player_id, code);
+        (player_id, tm.view())
+    }; // tournaments lock dropped here
 
     game_server.tournament_connections.write().await.insert(
         player_id,
@@ -415,10 +421,7 @@ async fn handle_join_tournament(
         },
     );
 
-    // Broadcast updated tournament view to all participants
-    let view = tm.view();
-    drop(tournaments);
-    broadcast_tournament_view(&code, &view, game_server).await;
+    broadcast_tournament_view(&view, game_server).await;
 
     Some((code, player_id))
 }
@@ -444,6 +447,8 @@ async fn handle_start_tournament(
             Ok(actions) => actions,
             Err(e) => {
                 tracing::warn!("Failed to start tournament {}: {}", code, e);
+                // Drop tournaments lock before acquiring tournament_connections
+                drop(tournaments);
                 let conns = game_server.tournament_connections.read().await;
                 if let Some(conn) = conns.get(&requester_id) {
                     send_error(&conn.tx, &e);
@@ -463,7 +468,7 @@ async fn handle_start_tournament(
     if let Some(tm) = tournaments.get(code) {
         let view = tm.view();
         drop(tournaments);
-        broadcast_tournament_view(code, &view, game_server).await;
+        broadcast_tournament_view(&view, game_server).await;
     }
 }
 
@@ -477,6 +482,7 @@ async fn create_tournament_game_session(
 
     let dark_tx = conns.get(&action.player1_id).map(|c| c.tx.clone());
     let light_tx = conns.get(&action.player2_id).map(|c| c.tx.clone());
+    drop(conns);
 
     let session = GameSession {
         game: Box::new(Game::new()),
@@ -486,6 +492,9 @@ async fn create_tournament_game_session(
         ai_color: None,
         tournament_code: Some(tournament_code.to_string()),
     };
+
+    // Capture initial state before moving session into the map
+    let initial_state = session.game.to_json();
 
     game_server
         .games
@@ -500,11 +509,7 @@ async fn create_tournament_game_session(
             opponent_name: action.player2_name.clone(),
         });
         send_msg(tx, &ServerMessage::GameStarted(Player::Dark));
-
-        let games = game_server.games.read().await;
-        if let Some(s) = games.get(&action.game_id) {
-            send_msg(tx, &ServerMessage::GameState(s.game.to_json()));
-        }
+        send_msg(tx, &ServerMessage::GameState(initial_state.clone()));
     }
 
     // Notify player2 (Light)
@@ -514,11 +519,7 @@ async fn create_tournament_game_session(
             opponent_name: action.player1_name.clone(),
         });
         send_msg(tx, &ServerMessage::GameStarted(Player::Light));
-
-        let games = game_server.games.read().await;
-        if let Some(s) = games.get(&action.game_id) {
-            send_msg(tx, &ServerMessage::GameState(s.game.to_json()));
-        }
+        send_msg(tx, &ServerMessage::GameState(initial_state));
     }
 
     tracing::info!(
@@ -536,57 +537,42 @@ async fn handle_tournament_game_end(
     tournament_code: &str,
     game_server: &Arc<GameServer>,
 ) {
-    // Determine the tournament player ID of the winner
-    let winner_player_id = {
-        let games = game_server.games.read().await;
-        if !games.contains_key(game_id) {
-            return;
-        }
-        drop(games);
-
-        let tournaments = game_server.tournaments.read().await;
-        let Some(tm) = tournaments.get(tournament_code) else {
-            return;
-        };
-
-        let match_id = tm.find_match_by_game_id(game_id);
-        let Some(match_id) = match_id else {
-            return;
-        };
-
-        // In tournament matches, Dark = player1, Light = player2
-        let view = tm.view();
-        let bracket_match = view.matches.iter().find(|m| m.id == match_id);
-        let Some(bracket_match) = bracket_match else {
-            return;
-        };
-
-        match winner_color {
-            Player::Dark => bracket_match.player1_id,
-            Player::Light => bracket_match.player2_id,
-        }
-    };
-
-    let Some(winner_id) = winner_player_id else {
-        return;
-    };
-
-    // Advance the bracket
-    let next_action = {
+    // Determine the winner's player ID and advance bracket in a single write lock
+    let (next_action, view) = {
         let mut tournaments = game_server.tournaments.write().await;
         let Some(tm) = tournaments.get_mut(tournament_code) else {
             return;
         };
 
-        let match_id = tm.find_match_by_game_id(game_id).unwrap();
-        match tm.advance(match_id, winner_id) {
+        let Some(match_id) = tm.find_match_by_game_id(game_id) else {
+            return;
+        };
+
+        // Use find_match to look up player IDs directly (avoids constructing full view)
+        let winner_id = {
+            let Some(bracket_match) = tm.find_match(match_id) else {
+                return;
+            };
+            // In tournament matches, Dark = player1, Light = player2
+            let id = match winner_color {
+                Player::Dark => bracket_match.player1_id,
+                Player::Light => bracket_match.player2_id,
+            };
+            let Some(id) = id else { return };
+            id
+        };
+
+        let next_action = match tm.advance(match_id, winner_id) {
             Ok(action) => action,
             Err(e) => {
                 tracing::error!("Failed to advance tournament: {}", e);
                 return;
             }
-        }
-    };
+        };
+
+        let view = tm.view();
+        (next_action, view)
+    }; // tournaments lock dropped
 
     // If a new match is ready, create its game session
     if let Some(action) = &next_action {
@@ -594,17 +580,11 @@ async fn handle_tournament_game_end(
     }
 
     // Broadcast the updated bracket
-    let tournaments = game_server.tournaments.read().await;
-    if let Some(tm) = tournaments.get(tournament_code) {
-        let view = tm.view();
-        drop(tournaments);
-        broadcast_tournament_view(tournament_code, &view, game_server).await;
-    }
+    broadcast_tournament_view(&view, game_server).await;
 }
 
 /// Send tournament view to all connected tournament participants.
 async fn broadcast_tournament_view(
-    _code: &str,
     view: &checkers_common::tournament::TournamentView,
     game_server: &Arc<GameServer>,
 ) {
@@ -655,7 +635,7 @@ async fn handle_disconnect(conn: &ConnectionState, game_server: &Arc<GameServer>
         if let Some(tm) = tournaments.get(code.as_str()) {
             let view = tm.view();
             drop(tournaments);
-            broadcast_tournament_view(code, &view, game_server).await;
+            broadcast_tournament_view(&view, game_server).await;
         }
 
         // Remove this player's connection

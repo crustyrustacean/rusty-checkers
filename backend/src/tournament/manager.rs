@@ -30,7 +30,6 @@ pub struct TournamentManager {
     matches: Vec<Match>,
     host_id: Uuid,
     total_rounds: usize,
-    current_round: usize,
     finished_at: Option<Instant>,
 }
 
@@ -46,7 +45,6 @@ impl TournamentManager {
             matches: Vec::new(),
             host_id,
             total_rounds: 0,
-            current_round: 0,
             finished_at: None,
         }
     }
@@ -57,6 +55,10 @@ impl TournamentManager {
 
     pub fn code(&self) -> &str {
         &self.code
+    }
+
+    pub fn set_code(&mut self, code: String) {
+        self.code = code;
     }
 
     /// Add a player to the tournament lobby.
@@ -105,7 +107,6 @@ impl TournamentManager {
         // Calculate bracket size: next power of 2 >= player count
         let bracket_size = player_ids.len().next_power_of_two();
         self.total_rounds = (bracket_size as f64).log2() as usize;
-        self.current_round = 0;
 
         // Create round 1 matches
         let matches_in_round = bracket_size / 2;
@@ -306,6 +307,11 @@ impl TournamentManager {
             .map(|m| m.id)
     }
 
+    /// Look up a match by its ID.
+    pub fn find_match(&self, match_id: Uuid) -> Option<&Match> {
+        self.matches.iter().find(|m| m.id == match_id)
+    }
+
     /// Find the active (incomplete) match for a given player.
     pub fn find_active_match_for_player(&self, player_id: Uuid) -> Option<&Match> {
         self.matches.iter().find(|m| {
@@ -330,12 +336,25 @@ impl TournamentManager {
             None
         };
 
+        // Compute current_round as the lowest round with an active (incomplete, started) match
+        let current_round = self
+            .matches
+            .iter()
+            .filter(|m| !m.is_complete() && (m.player1_id.is_some() || m.player2_id.is_some()))
+            .map(|m| m.round)
+            .min()
+            .unwrap_or(if self.total_rounds > 0 {
+                self.total_rounds - 1
+            } else {
+                0
+            });
+
         TournamentView {
             code: self.code.clone(),
             state: self.state.clone(),
             players: self.players.clone(),
             matches: self.matches.clone(),
-            current_round: self.current_round,
+            current_round,
             total_rounds: self.total_rounds,
             winner,
         }
