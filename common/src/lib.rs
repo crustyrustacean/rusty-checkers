@@ -8,6 +8,9 @@ mod piece;
 mod player;
 mod traits;
 
+#[cfg(test)]
+mod game_tests;
+
 // re-exports
 pub use ai::{AiPlayer, MinimaxAi, RandomAi};
 pub use game::{Game, MoveResult};

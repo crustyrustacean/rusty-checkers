@@ -233,8 +233,7 @@ async fn handle_make_move(
             if result == MoveResult::TurnComplete
                 && session.game.winner().is_none()
                 && session.ai_opponent.is_some()
-            {
-                if let (Some(ai), Some(ai_color)) = (&session.ai_opponent, &session.ai_color) {
+                && let (Some(ai), Some(ai_color)) = (&session.ai_opponent, &session.ai_color) {
                     // Verify it is indeed the AI's turn according to the engine
                     if session.game.current_player() == *ai_color {
                         let ai_color_val = ai_color.clone();
@@ -268,7 +267,6 @@ async fn handle_make_move(
                         }
                     }
                 }
-            }
         }
     }
 }
