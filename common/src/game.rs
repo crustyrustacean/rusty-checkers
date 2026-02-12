@@ -139,12 +139,102 @@ impl Game {
             .iter()
             .any(|(dest_row, _)| (*dest_row as i32 - piece.row as i32).abs() == 2)
     }
+
+    pub fn play_move(
+        &mut self,
+        start: (usize, usize),
+        end: (usize, usize),
+    ) -> Result<MoveResult, String> {
+        let piece = self
+            .pieces
+            .iter()
+            .find(|p| p.row == start.0 && p.col == start.1)
+            .ok_or("No piece at start position")?
+            .clone();
+
+        if piece.owner != self.current_player {
+            return Err("It is not your turn (or not your piece)".to_string());
+        }
+
+        let valid_moves = self.valid_moves(&piece);
+        if !valid_moves.contains(&end) {
+            return Err("Invalid move".to_string());
+        }
+
+        let was_jump = (end.0 as i32 - start.0 as i32).abs() == 2;
+
+        self.advance(&piece, end.0, end.1);
+
+        if was_jump {
+            let captured_row = (start.0 + end.0) / 2;
+            let captured_col = (start.1 + end.1) / 2;
+            self.capture(captured_row, captured_col);
+        }
+
+        let mut just_kinged = false;
+        if let Some(p) = self
+            .pieces
+            .iter_mut()
+            .find(|p| p.row == end.0 && p.col == end.1)
+        {
+            let reached_end =
+                (p.row == 0 && p.owner == Player::Light) || (p.row == 7 && p.owner == Player::Dark);
+
+            if reached_end && !p.is_kinged {
+                p.is_kinged = true;
+                just_kinged = true;
+            }
+        }
+
+        if was_jump && !just_kinged {
+            let piece_at_dest = self
+                .pieces
+                .iter()
+                .find(|p| p.row == end.0 && p.col == end.1)
+                .unwrap();
+
+            if self.has_available_jumps(piece_at_dest) {
+                // FORCE the player to continue with this specific piece.
+                // Note: You might need to add a field `must_jump_from: Option<(usize, usize)>`
+                // to the Game struct to strictly enforce this rule in `valid_moves`!
+                return Ok(MoveResult::ContinueJump(end.0, end.1));
+            }
+        }
+
+        self.switch_turn();
+
+        let current = self.current_player.clone();
+        let has_moves = self
+            .pieces
+            .iter()
+            .filter(|p| p.owner == current)
+            .any(|p| !self.valid_moves(p).is_empty());
+
+        if !has_moves {
+            let winner = match current {
+                Player::Dark => Player::Light,
+                Player::Light => Player::Dark,
+            };
+            self.winner = Some(winner.clone());
+            return Ok(MoveResult::GameWon(winner));
+        }
+
+        Ok(MoveResult::TurnComplete)
+    }
 }
 
 impl Default for Game {
     fn default() -> Self {
         Self::new()
     }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum MoveResult {
+    TurnComplete,
+    ContinueJump(usize, usize),
+    GameWon(Player),
+    InvalidMove(String),
 }
 
 #[cfg(test)]

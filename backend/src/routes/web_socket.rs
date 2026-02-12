@@ -3,7 +3,8 @@
 // dependencies
 use crate::game_server::{GameId, GameServer, GameSession, PlayerSender};
 use checkers_common::{
-    AiDifficulty, AiPlayer, ClientMessage, Game, MinimaxAi, Player, RandomAi, ServerMessage,
+    AiDifficulty, AiPlayer, ClientMessage, Game, MinimaxAi, MoveResult, Player, RandomAi,
+    ServerMessage,
 };
 use rama::http::ws::Message;
 use rama::http::ws::handshake::server::ServerWebSocket;
@@ -53,6 +54,11 @@ pub async fn game_handler(
                             Ok(ClientMessage::MakeMove { start, end }) => {
                                 tracing::info!("MakeMove: {:?} -> {:?}", start, end);
                                 if let (Some(gid), Some(player)) = (&my_game_id, &my_player) {
+                                    // Use the user's player ID to verify they are allowed to move
+                                    // Note: We don't pass 'player' to play_move directly because Game checks 'current_player' internally.
+                                    // However, we must ensure the WebSocket user matches the current turn player.
+                                    // Actually, simpler: play_move checks 'current_player', we just need to know if 'player' == 'current_player'
+                                    // But handle_make_move will verify that via the Game logic now.
                                     handle_make_move(gid, player, start, end, &tx, &game_server).await;
                                 } else {
                                     let _ = tx.send(serde_json::to_string(&ServerMessage::Error("Not in a game".into())).unwrap());
@@ -142,10 +148,6 @@ async fn handle_join_game(
     }
 }
 
-/// Handle a request to play against the AI.
-///
-/// Creates a new game session with the human as Dark and the AI as Light.
-/// The game starts immediately without waiting for another player.
 async fn handle_play_vs_ai(
     tx: PlayerSender,
     difficulty: AiDifficulty,
@@ -192,6 +194,8 @@ async fn handle_play_vs_ai(
     Some((game_id, Player::Dark))
 }
 
+// backend/src/routes/web_socket.rs
+
 async fn handle_make_move(
     game_id: &GameId,
     player: &Player,
@@ -207,141 +211,70 @@ async fn handle_make_move(
         return;
     };
 
-    // Check it's this player's turn
     if session.game.current_player != *player {
         let _ =
             tx.send(serde_json::to_string(&ServerMessage::Error("Not your turn".into())).unwrap());
         return;
     }
 
-    // Find the piece at start position
-    let Some(piece) = session
-        .game
-        .pieces
-        .iter()
-        .find(|p| p.row == start.0 && p.col == start.1)
-        .cloned()
-    else {
-        let _ = tx.send(
-            serde_json::to_string(&ServerMessage::Error("No piece at start position".into()))
-                .unwrap(),
-        );
-        return;
-    };
-
-    // Verify piece belongs to current player
-    if piece.owner != *player {
-        let _ =
-            tx.send(serde_json::to_string(&ServerMessage::Error("Not your piece".into())).unwrap());
-        return;
-    }
-
-    // Check if move is valid
-    let valid_moves = session.game.valid_moves(&piece);
-    if !valid_moves.contains(&end) {
-        let _ =
-            tx.send(serde_json::to_string(&ServerMessage::Error("Invalid move".into())).unwrap());
-        return;
-    }
-
-    // Execute the move
-    execute_move(&mut session.game, start, end);
-
-    // Broadcast state after human move
-    broadcast_game_state(session);
-
-    // If AI opponent exists and it's now the AI's turn, make the AI move
-    if let (Some(ai), Some(ai_color)) = (&session.ai_opponent, &session.ai_color)
-        && session.game.current_player == *ai_color
-        && session.game.winner.is_none()
-    {
-        let ai_color = ai_color.clone();
-
-        // AI move loop: handle multi-jumps
-        loop {
-            let Some((ai_start, ai_end)) = ai.select_move(&session.game, &ai_color) else {
-                break;
-            };
-
-            tracing::info!("AI move: {:?} -> {:?}", ai_start, ai_end);
-            execute_move(&mut session.game, ai_start, ai_end);
-
-            // If the turn hasn't switched (multi-jump in progress), continue
-            if session.game.current_player == ai_color && session.game.winner.is_none() {
-                // Broadcast intermediate state so the human can see the multi-jump
-                broadcast_game_state(session);
-                continue;
+    match session.game.play_move(start, end) {
+        Ok(result) => {
+            // Check if the move was actually invalid (if play_move returns Ok(InvalidMove))
+            if let MoveResult::InvalidMove(reason) = &result {
+                let _ =
+                    tx.send(serde_json::to_string(&ServerMessage::Error(reason.clone())).unwrap());
+                return;
             }
-            break;
+
+            // If valid, broadcast state
+            broadcast_game_state(session);
+
+            // Handle AI Turn if the human's turn is complete
+            if result == MoveResult::TurnComplete
+                && session.game.winner.is_none()
+                && session.ai_opponent.is_some()
+            {
+                if let (Some(ai), Some(ai_color)) = (&session.ai_opponent, &session.ai_color) {
+                    if session.game.current_player == *ai_color {
+                        let ai_color_val = ai_color.clone();
+
+                        // AI Loop
+                        loop {
+                            let Some((ai_start, ai_end)) =
+                                ai.select_move(&session.game, &ai_color_val)
+                            else {
+                                break;
+                            };
+
+                            tracing::info!("AI move: {:?} -> {:?}", ai_start, ai_end);
+
+                            match session.game.play_move(ai_start, ai_end) {
+                                Ok(ai_result) => {
+                                    broadcast_game_state(session);
+
+                                    match ai_result {
+                                        MoveResult::TurnComplete => break,
+                                        MoveResult::ContinueJump(_, _) => continue,
+                                        MoveResult::GameWon(_) => break,
+                                        // FIX: Handle the InvalidMove variant
+                                        MoveResult::InvalidMove(e) => {
+                                            tracing::error!("AI attempted invalid move: {}", e);
+                                            break;
+                                        }
+                                    }
+                                }
+                                Err(e) => {
+                                    tracing::error!("AI attempted invalid move (Err): {}", e);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
-
-        // Broadcast final state after AI completes its turn
-        broadcast_game_state(session);
-    }
-}
-
-/// Execute a single move on the game, handling captures, kinging, multi-jump
-/// detection, turn switching, and winner detection.
-fn execute_move(game: &mut Game, start: (usize, usize), end: (usize, usize)) {
-    let piece = game
-        .pieces
-        .iter()
-        .find(|p| p.row == start.0 && p.col == start.1)
-        .cloned();
-
-    let Some(piece) = piece else {
-        return;
-    };
-
-    let was_jump = (end.0 as i32 - start.0 as i32).abs() == 2;
-    game.advance(&piece, end.0, end.1);
-
-    if was_jump {
-        let captured_row = (start.0 + end.0) / 2;
-        let captured_col = (start.1 + end.1) / 2;
-        game.capture(captured_row, captured_col);
-    }
-
-    // Handle kinging
-    let mut just_kinged = false;
-    if let Some(p) = game
-        .pieces
-        .iter_mut()
-        .find(|p| p.row == end.0 && p.col == end.1)
-        && ((p.row == 0 && p.owner == Player::Light) || (p.row == 7 && p.owner == Player::Dark))
-        && !p.is_kinged
-    {
-        p.is_kinged = true;
-        just_kinged = true;
-    }
-
-    // Check for multi-jump
-    let can_jump_again = if was_jump && !just_kinged {
-        game.pieces
-            .iter()
-            .find(|p| p.row == end.0 && p.col == end.1)
-            .map(|p| game.has_available_jumps(p))
-            .unwrap_or(false)
-    } else {
-        false
-    };
-
-    if !can_jump_again {
-        game.switch_turn();
-
-        // Check for winner
-        let current = game.current_player.clone();
-        let has_moves = game
-            .pieces
-            .iter()
-            .filter(|p| p.owner == current)
-            .any(|p| !game.valid_moves(p).is_empty());
-
-        if !has_moves {
-            game.winner = Some(match current {
-                Player::Dark => Player::Light,
-                Player::Light => Player::Dark,
-            });
+        Err(e) => {
+            let _ = tx.send(serde_json::to_string(&ServerMessage::Error(e)).unwrap());
         }
     }
 }

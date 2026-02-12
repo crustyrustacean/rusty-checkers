@@ -9,7 +9,7 @@ mod player;
 
 // re-exports
 pub use ai::{AiPlayer, MinimaxAi, RandomAi};
-pub use game::Game;
+pub use game::{Game, MoveResult};
 pub use messages::*;
 pub use piece::GamePiece;
 pub use player::Player;
