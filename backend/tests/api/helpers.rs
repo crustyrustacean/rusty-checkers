@@ -7,8 +7,8 @@ use rama::http::layer::trace::TraceLayer;
 use rama::http::service::web::Router;
 use rama::http::{Body, Request, Response};
 use rusty_checkers_server_lib::config::get_configuration;
-use rusty_checkers_server_lib::startup::Application;
-use rusty_checkers_server_lib::state::AppState;
+use rusty_checkers_server_lib::startup::Server;
+use rusty_checkers_server_lib::state::ServerState;
 use rusty_checkers_server_lib::telemetry::{get_subscriber, init_subscriber, make_request_span};
 use std::sync::LazyLock;
 
@@ -25,7 +25,7 @@ static TRACING: LazyLock<()> = LazyLock::new(|| {
 });
 
 pub struct TestApp {
-    pub router: Router<AppState>,
+    pub router: Router<ServerState>,
 }
 
 pub async fn spawn_app() -> TestApp {
@@ -33,8 +33,8 @@ pub async fn spawn_app() -> TestApp {
 
     let _configuration = get_configuration().expect("Failed to read configuration.");
 
-    let state = AppState::new();
-    let router = Application::build_app_router(state);
+    let state = ServerState::new();
+    let router = Server::build_server_router(state);
 
     TestApp { router }
 }

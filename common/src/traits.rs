@@ -1,8 +1,8 @@
 // common/src/traits.rs
 
 // dependencies
-use crate::game::MoveResult;
 use crate::Player;
+use crate::game::MoveResult;
 use serde_json::Value;
 use std::any::Any;
 

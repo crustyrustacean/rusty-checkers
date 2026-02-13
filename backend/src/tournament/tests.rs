@@ -32,7 +32,12 @@ mod tests {
         let mut tm = TournamentManager::new("ABCD".into(), "Host".into());
         let id = tm.add_player("Alice".into()).unwrap();
         assert_eq!(tm.view().players.len(), 2);
-        assert!(tm.view().players.iter().any(|p| p.id == id && p.name == "Alice"));
+        assert!(
+            tm.view()
+                .players
+                .iter()
+                .any(|p| p.id == id && p.name == "Alice")
+        );
     }
 
     #[test]
@@ -122,11 +127,17 @@ mod tests {
 
         // Record win for match A
         let action_a = tm.advance(match_a_id, match_a_winner).unwrap();
-        assert!(action_a.is_none(), "Final match shouldn't start until both semifinalists are known");
+        assert!(
+            action_a.is_none(),
+            "Final match shouldn't start until both semifinalists are known"
+        );
 
         // Record win for match B — this should create the final match
         let action_b = tm.advance(match_b_id, match_b_winner).unwrap();
-        assert!(action_b.is_some(), "Both winners known, final match should start");
+        assert!(
+            action_b.is_some(),
+            "Both winners known, final match should start"
+        );
 
         let view = tm.view();
         let finals: Vec<_> = view.matches.iter().filter(|m| m.round == 1).collect();
@@ -176,7 +187,10 @@ mod tests {
 
         // Advancing the real match should trigger the final (bye winner already advanced)
         let action = tm.advance(real_match.id, real_winner).unwrap();
-        assert!(action.is_some(), "Final should start after real match completes");
+        assert!(
+            action.is_some(),
+            "Final should start after real match completes"
+        );
 
         let view = tm.view();
         let finals: Vec<_> = view.matches.iter().filter(|m| m.round == 1).collect();
@@ -253,7 +267,11 @@ mod tests {
         let _action = tm.forfeit(first_match.id, forfeiter).unwrap();
         // Opponent should now be the winner
         let view = tm.view();
-        let updated_match = view.matches.iter().find(|m| m.id == first_match.id).unwrap();
+        let updated_match = view
+            .matches
+            .iter()
+            .find(|m| m.id == first_match.id)
+            .unwrap();
         assert_eq!(updated_match.winner_id, Some(opponent));
     }
 
@@ -294,12 +312,18 @@ mod tests {
         // Complete one match — round 0 still has an incomplete match
         tm.advance(round1[0].id, match_a_winner).unwrap();
         let view = tm.view();
-        assert_eq!(view.current_round, 0, "Round 0 still has an incomplete match");
+        assert_eq!(
+            view.current_round, 0,
+            "Round 0 still has an incomplete match"
+        );
 
         // Complete the other match — round 0 done, round 1 begins
         tm.advance(round1[1].id, match_b_winner).unwrap();
         let view = tm.view();
-        assert_eq!(view.current_round, 1, "All round 0 matches complete, should advance to round 1");
+        assert_eq!(
+            view.current_round, 1,
+            "All round 0 matches complete, should advance to round 1"
+        );
 
         // Complete the final
         let final_match = view.matches.iter().find(|m| m.round == 1).unwrap();

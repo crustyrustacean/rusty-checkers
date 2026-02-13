@@ -5,7 +5,6 @@ use rand::seq::SliceRandom;
 use std::time::Instant;
 use uuid::Uuid;
 
-/// Describes a match that is ready to start and needs a game session created.
 #[derive(Debug, Clone)]
 pub struct MatchStartAction {
     pub match_id: Uuid,
@@ -16,11 +15,6 @@ pub struct MatchStartAction {
     pub player2_name: String,
 }
 
-/// Manages the lifecycle of a single-elimination bracket tournament.
-///
-/// This struct is game-agnostic — it only tracks players, bracket structure,
-/// and match outcomes. The actual game sessions are created externally.
-/// Time-to-live for finished tournaments before they are cleaned up.
 const TOURNAMENT_TTL: std::time::Duration = std::time::Duration::from_secs(3600);
 
 pub struct TournamentManager {
@@ -61,9 +55,6 @@ impl TournamentManager {
         self.code = code;
     }
 
-    /// Add a player to the tournament lobby.
-    ///
-    /// Returns the new player's ID, or an error if the tournament has already started.
     pub fn add_player(&mut self, name: String) -> Result<Uuid, String> {
         if self.state != TournamentState::Lobby {
             return Err("Tournament has already started".into());
@@ -74,21 +65,16 @@ impl TournamentManager {
         Ok(id)
     }
 
-    /// Look up a player by ID.
     pub fn find_player(&self, id: Uuid) -> Option<&TournamentPlayer> {
         self.players.iter().find(|p| p.id == id)
     }
 
-    /// Look up a player's name by ID.
     fn player_name(&self, id: Uuid) -> String {
         self.find_player(id)
             .map(|p| p.name.clone())
             .unwrap_or_else(|| "Unknown".into())
     }
 
-    /// Start the tournament: shuffle players, generate bracket, handle byes.
-    ///
-    /// Returns the list of matches that need game sessions created immediately.
     pub fn start(&mut self) -> Result<Vec<MatchStartAction>, String> {
         if self.state != TournamentState::Lobby {
             return Err("Tournament already started".into());
@@ -99,16 +85,13 @@ impl TournamentManager {
 
         self.state = TournamentState::InProgress;
 
-        // Shuffle players for random seeding
         let mut rng = rand::thread_rng();
         let mut player_ids: Vec<Uuid> = self.players.iter().map(|p| p.id).collect();
         player_ids.shuffle(&mut rng);
 
-        // Calculate bracket size: next power of 2 >= player count
         let bracket_size = player_ids.len().next_power_of_two();
         self.total_rounds = (bracket_size as f64).log2() as usize;
 
-        // Create round 1 matches
         let matches_in_round = bracket_size / 2;
         let mut actions = Vec::new();
 
@@ -125,16 +108,12 @@ impl TournamentManager {
                 m.player2_id = Some(player_ids[p2_idx]);
             }
 
-            // Handle bye: only one player in this slot
             if m.player1_id.is_some() && m.player2_id.is_none() {
-                // Auto-advance player1
                 m.winner_id = m.player1_id;
             } else if m.player2_id.is_some() && m.player1_id.is_none() {
-                // Auto-advance player2
                 m.winner_id = m.player2_id;
             }
 
-            // If both players present, create a game session
             if m.is_ready() && !m.is_complete() {
                 let game_id = Uuid::new_v4().to_string();
                 m.game_id = Some(game_id.clone());
@@ -152,7 +131,6 @@ impl TournamentManager {
             self.matches.push(m);
         }
 
-        // Pre-create placeholder matches for all future rounds
         let mut matches_remaining = matches_in_round / 2;
         for round in 1..self.total_rounds {
             for position in 0..matches_remaining {
@@ -161,13 +139,11 @@ impl TournamentManager {
             matches_remaining /= 2;
         }
 
-        // Propagate any byes into round 2
         self.propagate_byes(&mut actions);
 
         Ok(actions)
     }
 
-    /// After initial bracket creation, propagate bye winners into the next round.
     fn propagate_byes(&mut self, actions: &mut Vec<MatchStartAction>) {
         // Collect bye winners from round 0
         let round0: Vec<(usize, Uuid)> = self
@@ -182,9 +158,6 @@ impl TournamentManager {
         }
     }
 
-    /// After a match completes, seat the winner in the correct slot of the next round.
-    ///
-    /// Returns a `MatchStartAction` if the next-round match now has both players.
     fn seat_winner_in_next_round(
         &mut self,
         round: usize,
@@ -198,7 +171,7 @@ impl TournamentManager {
         }
 
         let next_position = position / 2;
-        let is_first_slot = position % 2 == 0;
+        let is_first_slot = position.is_multiple_of(2);
 
         if let Some(next_match) = self
             .matches
@@ -231,10 +204,6 @@ impl TournamentManager {
         }
     }
 
-    /// Record a match result and advance the winner through the bracket.
-    ///
-    /// Returns `Some(MatchStartAction)` if the next match is now ready to play,
-    /// or `None` if waiting for more results or the tournament is complete.
     pub fn advance(
         &mut self,
         match_id: Uuid,
@@ -247,7 +216,6 @@ impl TournamentManager {
                 .find(|m| m.id == match_id)
                 .ok_or("Match not found")?;
 
-            // Validate the winner is actually in this match
             if m.player1_id != Some(winner_id) && m.player2_id != Some(winner_id) {
                 return Err("Winner is not a participant of this match".into());
             }
@@ -260,7 +228,6 @@ impl TournamentManager {
             (m.round, m.position)
         };
 
-        // Check if this was the final round
         if round + 1 >= self.total_rounds {
             self.state = TournamentState::Finished;
             self.finished_at = Some(Instant::now());
@@ -274,7 +241,6 @@ impl TournamentManager {
         Ok(actions.into_iter().next())
     }
 
-    /// Forfeit a player from their current match, advancing the opponent.
     pub fn forfeit(
         &mut self,
         match_id: Uuid,
@@ -299,7 +265,6 @@ impl TournamentManager {
         self.advance(match_id, opponent_id)
     }
 
-    /// Find the match ID associated with a game session ID.
     pub fn find_match_by_game_id(&self, game_id: &str) -> Option<Uuid> {
         self.matches
             .iter()
@@ -307,12 +272,10 @@ impl TournamentManager {
             .map(|m| m.id)
     }
 
-    /// Look up a match by its ID.
     pub fn find_match(&self, match_id: Uuid) -> Option<&Match> {
         self.matches.iter().find(|m| m.id == match_id)
     }
 
-    /// Find the active (incomplete) match for a given player.
     pub fn find_active_match_for_player(&self, player_id: Uuid) -> Option<&Match> {
         self.matches.iter().find(|m| {
             !m.is_complete()
@@ -321,22 +284,16 @@ impl TournamentManager {
         })
     }
 
-    /// Build a serializable view of the current tournament state.
     pub fn view(&self) -> TournamentView {
         let winner = if self.state == TournamentState::Finished {
-            // Find the final match winner
             self.matches
                 .iter()
                 .filter(|m| m.round + 1 == self.total_rounds && m.is_complete())
-                .find_map(|m| {
-                    m.winner_id
-                        .and_then(|wid| self.find_player(wid).cloned())
-                })
+                .find_map(|m| m.winner_id.and_then(|wid| self.find_player(wid).cloned()))
         } else {
             None
         };
 
-        // Compute current_round as the lowest round with an active (incomplete, started) match
         let current_round = self
             .matches
             .iter()
@@ -360,21 +317,18 @@ impl TournamentManager {
         }
     }
 
-    /// Mark a player as disconnected.
     pub fn disconnect_player(&mut self, player_id: Uuid) {
         if let Some(p) = self.players.iter_mut().find(|p| p.id == player_id) {
             p.connected = false;
         }
     }
 
-    /// Mark a player as reconnected.
     pub fn reconnect_player(&mut self, player_id: Uuid) {
         if let Some(p) = self.players.iter_mut().find(|p| p.id == player_id) {
             p.connected = true;
         }
     }
 
-    /// Returns `true` if this tournament has been finished for longer than the TTL.
     pub fn is_stale(&self) -> bool {
         self.finished_at
             .map(|t| t.elapsed() > TOURNAMENT_TTL)

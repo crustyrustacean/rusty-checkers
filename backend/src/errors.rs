@@ -2,9 +2,9 @@
 
 // re-exports
 use crate::response::ApiResponse;
-pub use rama::error::BoxError as AppBoxError;
-pub use rama::error::ErrorContext as AppErrorContext;
-pub use rama::error::OpaqueError as AppOpaqueError;
+pub use rama::error::BoxError as ServerBoxError;
+pub use rama::error::ErrorContext as ServerErrorContext;
+pub use rama::error::OpaqueError as ServerOpaqueError;
 use rama::http::{StatusCode, response::Response, service::web::response::IntoResponse};
 
 // Unified error type for the API

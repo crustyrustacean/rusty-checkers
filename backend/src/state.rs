@@ -3,15 +3,15 @@
 // dependencies
 
 #[derive(Clone, Debug)]
-pub struct AppState {}
+pub struct ServerState {}
 
-impl Default for AppState {
+impl Default for ServerState {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl AppState {
+impl ServerState {
     pub fn new() -> Self {
         Self {}
     }

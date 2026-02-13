@@ -14,7 +14,6 @@ pub struct Game {
     pub captured_pieces: Vec<GamePiece>,
     pub current_player: Player,
     pub winner: Option<Player>,
-    /// When set, the current player must continue jumping from this square.
     #[serde(skip)]
     pub must_jump_from: Option<(usize, usize)>,
 }
@@ -255,11 +254,16 @@ impl BoardGame for Game {
 
     fn get_valid_moves(&self, start: (usize, usize)) -> Vec<(usize, usize)> {
         if let Some(required) = self.must_jump_from
-            && start != required {
-                return vec![];
-            }
+            && start != required
+        {
+            return vec![];
+        }
 
-        if let Some(piece) = self.pieces.iter().find(|p| p.row == start.0 && p.col == start.1) {
+        if let Some(piece) = self
+            .pieces
+            .iter()
+            .find(|p| p.row == start.0 && p.col == start.1)
+        {
             if piece.owner != self.current_player {
                 return vec![];
             }
@@ -272,13 +276,11 @@ impl BoardGame for Game {
             let captures_exist = self.check_captures_moves(&piece.owner);
 
             if captures_exist {
-                
                 moves
                     .into_iter()
                     .filter(|(r, _)| (*r as i32 - piece.row as i32).abs() == 2)
                     .collect()
             } else {
-                
                 moves
             }
         } else {
@@ -305,7 +307,6 @@ impl BoardGame for Game {
     fn box_clone(&self) -> Box<dyn BoardGame> {
         Box::new(self.clone())
     }
-
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -315,5 +316,3 @@ pub enum MoveResult {
     GameWon(Player),
     InvalidMove(String),
 }
-
-

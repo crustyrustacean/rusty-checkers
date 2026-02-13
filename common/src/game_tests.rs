@@ -128,7 +128,10 @@ mod tests {
         let result = game.play_move((4, 3), (6, 5));
         assert_eq!(result, Ok(MoveResult::TurnComplete));
         assert_eq!(game.captured_pieces.len(), 2);
-        assert!(game.must_jump_from.is_none(), "must_jump_from should be cleared");
+        assert!(
+            game.must_jump_from.is_none(),
+            "must_jump_from should be cleared"
+        );
         assert_eq!(game.current_player, Player::Light);
     }
 
@@ -172,7 +175,11 @@ mod tests {
         );
         let result = game.play_move((6, 3), (7, 4));
         assert_eq!(result, Ok(MoveResult::TurnComplete));
-        let piece = game.pieces.iter().find(|p| p.row == 7 && p.col == 4).unwrap();
+        let piece = game
+            .pieces
+            .iter()
+            .find(|p| p.row == 7 && p.col == 4)
+            .unwrap();
         assert!(piece.is_kinged, "Dark piece should be kinged at row 7");
     }
 
@@ -187,7 +194,11 @@ mod tests {
         );
         let result = game.play_move((1, 2), (0, 1));
         assert_eq!(result, Ok(MoveResult::TurnComplete));
-        let piece = game.pieces.iter().find(|p| p.row == 0 && p.col == 1).unwrap();
+        let piece = game
+            .pieces
+            .iter()
+            .find(|p| p.row == 0 && p.col == 1)
+            .unwrap();
         assert!(piece.is_kinged, "Light piece should be kinged at row 0");
     }
 
@@ -222,7 +233,10 @@ mod tests {
 
         // Try to move the other piece instead
         let result = game.play_move((1, 0), (2, 1));
-        assert!(result.is_err(), "should reject move from wrong piece during multi-jump");
+        assert!(
+            result.is_err(),
+            "should reject move from wrong piece during multi-jump"
+        );
         assert!(result.unwrap_err().contains("must continue jumping"));
     }
 }

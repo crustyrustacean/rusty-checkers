@@ -1,37 +1,34 @@
-//! AI opponents for the checkers game.
-//!
-//! Provides a trait [`AiPlayer`] and two implementations:
-//! - [`RandomAi`] picks a random legal move each turn.
-//! - [`MinimaxAi`] uses minimax with alpha-beta pruning at a configurable depth.
+// common/src/ai.rs
 
+// depedencies
 use crate::game::Game;
 use crate::player::Player;
 use crate::traits::BoardGame;
 use rand::seq::SliceRandom;
 
-/// Trait for AI players that can select a move given a game state.
 pub trait AiPlayer {
-    /// Select a move for the given `color` in the current `game` state.
-    ///
-    /// Returns `Some((start, end))` with the source and destination coordinates,
-    /// or `None` if no legal moves exist.
-    fn select_move(&self, game: &dyn BoardGame, color: &Player) -> Option<((usize, usize), (usize, usize))>;
+    fn select_move(
+        &self,
+        game: &dyn BoardGame,
+        color: &Player,
+    ) -> Option<((usize, usize), (usize, usize))>;
 }
 
-/// An AI that picks a random legal move each turn.
 pub struct RandomAi;
 
 impl AiPlayer for RandomAi {
-    fn select_move(&self, game: &dyn BoardGame, _color: &Player) -> Option<((usize, usize), (usize, usize))> {
-        // Generic implementation: Iterate all board squares (0..8)
-        // This works for ANY grid game!
+    fn select_move(
+        &self,
+        game: &dyn BoardGame,
+        _color: &Player,
+    ) -> Option<((usize, usize), (usize, usize))> {
         let mut all_moves = Vec::new();
-        
+
         for r in 0..8 {
             for c in 0..8 {
                 let moves = game.get_valid_moves((r, c));
                 for dest in moves {
-                    // Note: We can't easily check 'forced captures' here without 
+                    // Note: We can't easily check 'forced captures' here without
                     // extra trait methods, but Game::apply_move will reject invalid ones anyway.
                     all_moves.push(((r, c), dest));
                 }
@@ -43,13 +40,6 @@ impl AiPlayer for RandomAi {
     }
 }
 
-/// An AI that uses minimax with alpha-beta pruning.
-///
-/// The `depth` parameter controls how many moves ahead the AI looks.
-/// Suggested difficulty levels:
-/// - Easy: depth 2
-/// - Medium: depth 4
-/// - Hard: depth 6
 pub struct MinimaxAi {
     depth: u32,
 }
@@ -60,10 +50,7 @@ impl MinimaxAi {
         Self { depth }
     }
 
-    /// Evaluate a board position from the perspective of `ai_color`.
-    ///
-    /// Positive scores favor the AI; negative scores favor the opponent.
-    fn evaluate(game: &Game, ai_color: &Player) -> i32 {
+    pub fn evaluate(game: &Game, ai_color: &Player) -> i32 {
         let mut score = 0;
 
         for piece in &game.pieces {
@@ -99,8 +86,13 @@ impl MinimaxAi {
         score
     }
 
-    /// Collect all legal moves for `color`, respecting forced captures.
     fn collect_moves(game: &Game, color: &Player) -> Vec<((usize, usize), (usize, usize))> {
+        if let Some(pos) = game.must_jump_from {
+            return Self::collect_jump_moves(game, pos)
+                .into_iter()
+                .map(|dest| (pos, dest))
+                .collect();
+        }
         let captures_exist = game.check_captures_moves(color);
         let mut all_moves = Vec::new();
 
@@ -117,9 +109,6 @@ impl MinimaxAi {
         all_moves
     }
 
-    /// Apply a move to a cloned game state, completing any multi-jump
-    /// chain greedily (picking the first available continuation).
-    /// Returns the resulting game state after the full turn.
     fn apply_move(game: &Game, start: (usize, usize), end: (usize, usize)) -> Game {
         use crate::game::MoveResult;
 
@@ -141,9 +130,12 @@ impl MinimaxAi {
         }
     }
 
-    /// Collect only jump destinations for a piece at the given position.
     fn collect_jump_moves(game: &Game, pos: (usize, usize)) -> Vec<(usize, usize)> {
-        let Some(piece) = game.pieces.iter().find(|p| p.row == pos.0 && p.col == pos.1) else {
+        let Some(piece) = game
+            .pieces
+            .iter()
+            .find(|p| p.row == pos.0 && p.col == pos.1)
+        else {
             return Vec::new();
         };
         game.valid_moves(piece)
@@ -152,9 +144,6 @@ impl MinimaxAi {
             .collect()
     }
 
-    /// Minimax with alpha-beta pruning.
-    ///
-    /// Returns the evaluation score of the position.
     fn minimax(
         game: &Game,
         depth: u32,
@@ -219,19 +208,19 @@ impl MinimaxAi {
 }
 
 impl AiPlayer for MinimaxAi {
-    fn select_move(&self, game: &dyn BoardGame, color: &Player) -> Option<((usize, usize), (usize, usize))> {
-        // Downcast: We are a Checkers AI, so we require a Checkers board.
-        // If the game is NOT Checkers, this AI simply returns None.
-        let game = game.as_any().downcast_ref::<Game>()?;
-        
-        // ... Original Minimax Logic ...
-        // Re-use the existing private methods which take &Game
-        let moves = Self::collect_moves(game, color);
-        
+    fn select_move(
+        &self,
+        game: &dyn BoardGame,
+        color: &Player,
+    ) -> Option<((usize, usize), (usize, usize))> {
+         let game = game.as_any().downcast_ref::<Game>()?;
+
+         let moves = Self::collect_moves(game, color);
+
         if moves.is_empty() {
-             return None;
+            return None;
         }
-        
+
         // (Copy the rest of your original select_move logic here)
         let mut best_move = None;
         let mut best_score = i32::MIN;
@@ -255,192 +244,5 @@ impl AiPlayer for MinimaxAi {
         }
 
         best_move
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::piece::GamePiece;
-
-    /// Helper: create an empty game with specific pieces.
-    fn game_with_pieces(pieces: Vec<GamePiece>, current: Player) -> Game {
-        Game {
-            pieces,
-            captured_pieces: vec![],
-            current_player: current,
-            winner: None,
-            must_jump_from: None,
-        }
-    }
-
-    #[test]
-    fn test_random_ai_returns_valid_move() {
-        let game = Game::new();
-        let ai = RandomAi;
-
-        let result = ai.select_move(&game, &Player::Dark);
-        assert!(
-            result.is_some(),
-            "RandomAi should return a move from the starting position"
-        );
-
-        let ((sr, sc), (er, ec)) = result.unwrap();
-        let piece = game
-            .pieces
-            .iter()
-            .find(|p| p.row == sr && p.col == sc)
-            .expect("move should start from an existing piece");
-        assert_eq!(piece.owner, Player::Dark);
-
-        let valid = game.valid_moves(piece);
-        assert!(
-            valid.contains(&(er, ec)),
-            "move destination should be valid"
-        );
-    }
-
-    #[test]
-    fn test_random_ai_respects_forced_captures() {
-        // Set up a board where Dark has a forced capture
-        let game = game_with_pieces(
-            vec![
-                GamePiece::new(Player::Dark, 3, 2),
-                GamePiece::new(Player::Light, 4, 3),
-                // Empty at (5, 4) so Dark can jump
-            ],
-            Player::Dark,
-        );
-
-        let ai = RandomAi;
-        let result = ai.select_move(&game, &Player::Dark);
-        assert!(result.is_some());
-
-        let ((sr, sc), (er, ec)) = result.unwrap();
-        assert_eq!((sr, sc), (3, 2));
-        assert_eq!((er, ec), (5, 4), "RandomAi must take the forced capture");
-    }
-
-    #[test]
-    fn test_random_ai_returns_none_when_no_moves() {
-        // Dark piece boxed in at corner with no moves
-        let game = game_with_pieces(vec![GamePiece::new(Player::Dark, 7, 0)], Player::Dark);
-
-        let ai = RandomAi;
-        let result = ai.select_move(&game, &Player::Dark);
-        assert!(
-            result.is_none(),
-            "should return None when no moves available"
-        );
-    }
-
-    #[test]
-    fn test_minimax_returns_valid_move() {
-        let game = Game::new();
-        let ai = MinimaxAi::new(2);
-
-        let result = ai.select_move(&game, &Player::Dark);
-        assert!(
-            result.is_some(),
-            "MinimaxAi should return a move from the starting position"
-        );
-
-        let ((sr, sc), (er, ec)) = result.unwrap();
-        let piece = game
-            .pieces
-            .iter()
-            .find(|p| p.row == sr && p.col == sc)
-            .expect("move should start from an existing piece");
-        assert_eq!(piece.owner, Player::Dark);
-
-        let valid = game.valid_moves(piece);
-        assert!(
-            valid.contains(&(er, ec)),
-            "move destination should be valid"
-        );
-    }
-
-    #[test]
-    fn test_minimax_takes_obvious_capture() {
-        // Dark at (3,2), Light at (4,3), empty at (5,4) — obvious capture
-        let game = game_with_pieces(
-            vec![
-                GamePiece::new(Player::Dark, 3, 2),
-                GamePiece::new(Player::Light, 4, 3),
-            ],
-            Player::Dark,
-        );
-
-        let ai = MinimaxAi::new(4);
-        let result = ai.select_move(&game, &Player::Dark);
-        assert!(result.is_some());
-
-        let (start, end) = result.unwrap();
-        assert_eq!(start, (3, 2));
-        assert_eq!(end, (5, 4), "MinimaxAi should take the obvious capture");
-    }
-
-    #[test]
-    fn test_minimax_blocks_obvious_threat() {
-        // Light at (4,3) can capture Dark at (3,2) if Dark doesn't move.
-        // Dark has another piece at (2,5) that can move safely.
-        // Dark should move (3,2) out of danger rather than the other piece.
-        let game = game_with_pieces(
-            vec![
-                GamePiece::new(Player::Dark, 3, 2),
-                GamePiece::new(Player::Dark, 2, 5),
-                GamePiece::new(Player::Light, 4, 3),
-            ],
-            Player::Dark,
-        );
-
-        let ai = MinimaxAi::new(4);
-        let result = ai.select_move(&game, &Player::Dark);
-        assert!(result.is_some());
-
-        let (start, _end) = result.unwrap();
-        // The AI should move the threatened piece at (3,2) rather than
-        // the safe piece at (2,5), or at least take the capture itself.
-        // Either moving (3,2) away or capturing with it is acceptable.
-        assert_eq!(start, (3, 2), "MinimaxAi should move the threatened piece");
-    }
-
-    #[test]
-    fn test_minimax_evaluation_favors_more_pieces() {
-        // AI has 2 pieces, opponent has 1 — AI should have positive eval
-        let game = game_with_pieces(
-            vec![
-                GamePiece::new(Player::Dark, 3, 2),
-                GamePiece::new(Player::Dark, 2, 5),
-                GamePiece::new(Player::Light, 5, 4),
-            ],
-            Player::Dark,
-        );
-
-        let score = MinimaxAi::evaluate(&game, &Player::Dark);
-        assert!(
-            score > 0,
-            "AI with more pieces should have positive evaluation, got {}",
-            score
-        );
-    }
-
-    #[test]
-    fn test_minimax_evaluation_king_worth_more() {
-        // One Dark king vs one Light regular piece
-        let mut king = GamePiece::new(Player::Dark, 4, 3);
-        king.is_kinged = true;
-
-        let game = game_with_pieces(
-            vec![king, GamePiece::new(Player::Light, 5, 4)],
-            Player::Dark,
-        );
-
-        let score = MinimaxAi::evaluate(&game, &Player::Dark);
-        assert!(
-            score > 0,
-            "King should be worth more than regular piece, got {}",
-            score
-        );
     }
 }

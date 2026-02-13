@@ -2,12 +2,12 @@
 
 // dependencies
 use crate::config::Settings;
-use crate::errors::AppBoxError;
-use crate::errors::AppErrorContext;
-use crate::errors::AppOpaqueError;
+use crate::errors::ServerBoxError;
+use crate::errors::ServerErrorContext;
+use crate::errors::ServerOpaqueError;
 use crate::game_server::GameServer;
 use crate::routes::{health_check, web_socket::game_handler};
-use crate::state::AppState;
+use crate::state::ServerState;
 use crate::telemetry::make_request_span;
 use rama::{
     Layer,
@@ -25,18 +25,18 @@ use rama::{
 };
 use std::time::Duration;
 
-pub struct Application {
-    pub router: Router<AppState>,
+pub struct Server {
+    pub router: Router<ServerState>,
     pub listener: TcpListener,
 }
 
-impl Application {
-    pub async fn build(configuration: &Settings) -> Result<Self, AppBoxError> {
-        // build app state
-        let state = AppState::new();
+impl Server {
+    pub async fn build(configuration: &Settings) -> Result<Self, ServerBoxError> {
+        // build server state
+        let state = ServerState::new();
 
-        // build the app router
-        let router = Self::build_app_router(state);
+        // build the server router
+        let router = Self::build_server_router(state);
 
         // configure the host and port
         let address = format!(
@@ -45,7 +45,7 @@ impl Application {
         );
         let listener = TcpListener::bind(address)
             .await
-            .map_err(AppOpaqueError::from_boxed)
+            .map_err(ServerOpaqueError::from_boxed)
             .context(format!(
                 "Unable to create TCP listener on: Host: {}, Port: {}",
                 configuration.application.host, configuration.application.port
@@ -60,7 +60,7 @@ impl Application {
         Ok(Self { router, listener })
     }
 
-    pub fn build_app_router(state: AppState) -> Router<AppState> {
+    pub fn build_server_router(state: ServerState) -> Router<ServerState> {
         let assets_dir = std::env::var("ASSETS_DIR").unwrap_or_else(|_| "../public".to_string());
 
         let game_server = GameServer::new();

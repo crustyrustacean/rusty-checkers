@@ -10,6 +10,9 @@ pub mod tournament;
 mod traits;
 
 #[cfg(test)]
+mod ai_tests;
+
+#[cfg(test)]
 mod game_tests;
 
 // re-exports

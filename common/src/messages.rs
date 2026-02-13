@@ -5,7 +5,6 @@ use crate::player::Player;
 use crate::tournament::TournamentView;
 use serde::{Deserialize, Serialize};
 
-/// Difficulty level for the AI opponent.
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub enum AiDifficulty {
     Easy,
@@ -54,8 +53,8 @@ pub enum ServerMessage {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tournament::{Match, TournamentPlayer, TournamentState};
     use crate::Player;
+    use crate::tournament::{Match, TournamentPlayer, TournamentState};
 
     #[test]
     fn test_client_message_serialization() {
