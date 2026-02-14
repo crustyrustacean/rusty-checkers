@@ -225,6 +225,8 @@ button:hover {
 
 .tournament-info {
     background: #0d1b2a;
+    border: 1px solid #334;
+    border-left: 3px solid #e94560;
     border-radius: 4px;
     padding: 0.75rem 1rem;
     margin-bottom: 1.25rem;
