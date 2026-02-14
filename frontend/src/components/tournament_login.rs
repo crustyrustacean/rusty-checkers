@@ -59,6 +59,17 @@ pub fn TournamentLogin(props: &TournamentLoginProps) -> Html {
     html! {
         <div class="panel tournament-login">
             <h2>{"Tournament Mode"}</h2>
+            <div class="tournament-info">
+                <h3>{"How It Works"}</h3>
+                <ul class="rules-list">
+                    <li>{"Single-elimination bracket tournament for 2 or more players."}</li>
+                    <li>{"One player creates a room and shares the 4-character room code with friends."}</li>
+                    <li>{"Other players join using the room code."}</li>
+                    <li>{"Once everyone has joined, the host starts the tournament."}</li>
+                    <li>{"Players are randomly seeded into a bracket. Win your checkers match to advance; lose and you\u{2019}re eliminated."}</li>
+                    <li>{"The last player standing is crowned tournament champion!"}</li>
+                </ul>
+            </div>
             <div class="form-group">
                 <label>{"Nickname"}</label>
                 <input type="text"
