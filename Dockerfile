@@ -1,5 +1,5 @@
 # Stage 1: Chef - prepare recipe
-FROM rust:1.93 AS chef
+FROM rust:1.97 AS chef
 
 RUN cargo install cargo-chef
 WORKDIR /app
@@ -15,7 +15,7 @@ COPY frontend ./frontend
 RUN cargo chef prepare --recipe-path recipe.json
 
 # Stage 3: Build frontend with Trunk
-FROM rust:1.93 AS frontend-builder
+FROM rust:1.97 AS frontend-builder
 
 RUN cargo install trunk
 RUN rustup target add wasm32-unknown-unknown
