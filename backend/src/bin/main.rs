@@ -3,7 +3,7 @@
 // dependencies
 use rama::telemetry::tracing;
 use rusty_checkers_server_lib::config::get_configuration;
-use rusty_checkers_server_lib::errors::{ServerBoxError, ServerErrorContext, ServerOpaqueError};
+use rusty_checkers_server_lib::errors::{ServerBoxError, ServerErrorContext, ServerErrorExt};
 use rusty_checkers_server_lib::startup::Server;
 use rusty_checkers_server_lib::telemetry::{get_subscriber, init_subscriber};
 
@@ -24,12 +24,11 @@ async fn main() -> Result<(), ServerBoxError> {
     // build and run the server
     tracing::info!("Building the server...");
     Server::build(&configuration)
-        .await
-        .map_err(ServerOpaqueError::from_boxed)
+        .map_err(|e| e.into_opaque_error())
         .context("Unable to build the server on the configured host and port.")?
         .run(&configuration)
         .await
-        .map_err(ServerOpaqueError::from_boxed)
+        .map_err(|e| e.into_opaque_error())
         .context("Unable to run the server")?;
 
     Ok(())

@@ -85,7 +85,7 @@ impl TournamentManager {
 
         self.state = TournamentState::InProgress;
 
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let mut player_ids: Vec<Uuid> = self.players.iter().map(|p| p.id).collect();
         player_ids.shuffle(&mut rng);
 

@@ -4,7 +4,8 @@
 use crate::response::ApiResponse;
 pub use rama::error::BoxError as ServerBoxError;
 pub use rama::error::ErrorContext as ServerErrorContext;
-pub use rama::error::OpaqueError as ServerOpaqueError;
+pub use rama::error::ErrorExt as ServerErrorExt;
+pub use rama::error::extra::OpaqueError as ServerOpaqueError;
 use rama::http::{StatusCode, response::Response, service::web::response::IntoResponse};
 
 // Unified error type for the API

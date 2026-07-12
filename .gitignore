@@ -1,5 +1,11 @@
 # rusty-checkers .gitignore rules
 
+Agent configuration
+.rho
+
+Agent logs
+logs
+
 # Environment variables
 .env
 

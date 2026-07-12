@@ -4,15 +4,17 @@
 use crate::config::Settings;
 use crate::errors::ServerBoxError;
 use crate::errors::ServerErrorContext;
-use crate::errors::ServerOpaqueError;
+use crate::errors::ServerErrorExt;
 use crate::game_server::GameServer;
 use crate::routes::{health_check, web_socket::game_handler};
 use crate::state::ServerState;
 use crate::telemetry::make_request_span;
 use rama::{
     Layer,
+    Service,
     error::BoxError,
     graceful::Shutdown,
+    http::layer::error_handling::ErrorHandlerLayer,
     http::layer::trace::TraceLayer,
     http::server::HttpServer,
     http::service::fs::{DirectoryServeMode::NotFound, ServeDir, ServeFile},
@@ -27,11 +29,11 @@ use std::time::Duration;
 
 pub struct Server {
     pub router: Router<ServerState>,
-    pub listener: TcpListener,
+    pub address: String,
 }
 
 impl Server {
-    pub async fn build(configuration: &Settings) -> Result<Self, ServerBoxError> {
+    pub fn build(configuration: &Settings) -> Result<Self, ServerBoxError> {
         // build server state
         let state = ServerState::new();
 
@@ -43,13 +45,6 @@ impl Server {
             "{}:{}",
             configuration.application.host, configuration.application.port
         );
-        let listener = TcpListener::bind(address)
-            .await
-            .map_err(ServerOpaqueError::from_boxed)
-            .context(format!(
-                "Unable to create TCP listener on: Host: {}, Port: {}",
-                configuration.application.host, configuration.application.port
-            ))?;
 
         tracing::info!(
             "Listening on: Host: {}, Port: {}",
@@ -57,7 +52,7 @@ impl Server {
             configuration.application.port
         );
 
-        Ok(Self { router, listener })
+        Ok(Self { router, address })
     }
 
     pub fn build_server_router(state: ServerState) -> Router<ServerState> {
@@ -90,7 +85,7 @@ impl Server {
                 router.with_sub_router_make_fn("/v1", |router| {
                     router
                         .with_get("/health_check", health_check)
-                        .with_sub_service(
+                        .with_endpoint_service(
                             "/ws",
                             WebSocketAcceptor::new().into_service(service_fn(move |ws| {
                                 let server = gs.clone();
@@ -99,7 +94,7 @@ impl Server {
                         )
                 })
             })
-            .with_sub_service(
+            .with_endpoint_service(
                 "/public",
                 ServeDir::new(&assets_dir).with_directory_serve_mode(NotFound),
             )
@@ -110,7 +105,7 @@ impl Server {
         let graceful = Shutdown::default();
 
         let router = self.router;
-        let listener = self.listener;
+        let address = self.address;
 
         let http_service_with_tracing =
             TraceLayer::new_for_http().make_span_with(make_request_span);
@@ -118,9 +113,17 @@ impl Server {
         tracing::info!("Running the application...");
         graceful.spawn_task_fn(async |guard| {
             let exec = Executor::graceful(guard.clone());
+
+            let listener = TcpListener::bind_address(address, exec)
+                .await
+                .map_err(|e| e.into_opaque_error())
+                .context("Unable to create TCP listener")
+                .expect("Failed to bind TCP listener");
+
             let http_service =
-                HttpServer::auto(exec).service(http_service_with_tracing.into_layer(router));
-            listener.serve_graceful(guard, http_service).await;
+                HttpServer::auto(Executor::graceful(guard.clone()))
+                    .service(http_service_with_tracing.into_layer(ErrorHandlerLayer::new().into_layer(router).boxed()));
+            listener.serve(http_service).await;
         });
 
         graceful
